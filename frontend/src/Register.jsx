@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_URL = "http://localhost:3001";
+import { api } from "./lib/apiClient.js";
 
 export default function Register({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [key, setKey] = useState("");
+  const [role] = useState("bot");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -17,22 +17,20 @@ export default function Register({ onLogin }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, key })
-      });
-      const data = await res.json();
+      const body = { username, password };
+      if (key.trim()) body.key = key.trim();
+      if (role) body.role = role;
+      const { data } = await api.post(`/api/auth/register`, body);
 
-      if (res.ok && data.ok) {
+      if (data && data.ok) {
         // if backend returns token, store and use it (behave like login)
         if (data.token) {
           localStorage.setItem("token", data.token);
           if (onLogin) onLogin(data);
           // navigate according to role if provided
-          const role = data.role || (data.user && data.user.role);
-          if (role === "admin") navigate("/admin");
-          else if (role === "minecraft") navigate("/minecraft");
+          const r = data.role || (data.user && data.user.role);
+          if (r === "admin") navigate("/admin");
+          else if (r === "game") navigate("/minecraft");
           else navigate("/dashboard");
           return;
         }
@@ -46,7 +44,7 @@ export default function Register({ onLogin }) {
         setError(data.error || "Đăng ký thất bại");
       }
     } catch (err) {
-      setError("Lỗi kết nối tới server");
+      setError(err.message || "Lỗi kết nối tới server");
     } finally {
       setLoading(false);
     }
@@ -82,15 +80,17 @@ export default function Register({ onLogin }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Key (optional)</label>
             <input
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono"
               placeholder="registration key"
             />
+            <p className="text-xs text-gray-500 mt-1">Không nhập key sẽ đăng ký theo role mặc định của hệ thống.</p>
           </div>
+
+          
 
           {error && <div className="text-red-500 text-sm p-2 bg-red-50 rounded">{error}</div>}
 

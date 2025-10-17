@@ -1,27 +1,26 @@
 import { create } from "zustand";
+import { decodeJwtPayload } from "../lib/tokenUtils.js";
 
-function decodeJwt(token) {
-  try {
-    const payload = token.split(".")[1];
-    const padded = payload.padEnd(payload.length + (4 - (payload.length % 4)) % 4, "=");
-    const json = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(decodeURIComponent(escape(json)));
-  } catch {
-    return null;
+const storedToken = localStorage.getItem("token");
+let initialUser = null;
+if (storedToken) {
+  const payload = decodeJwtPayload(storedToken);
+  if (payload) {
+    initialUser = { username: payload.username, role: payload.role };
+  } else {
+    localStorage.removeItem("token");
   }
 }
 
 export const useAuthStore = create((set) => ({
-  token: localStorage.getItem("token") || null,
-  user: null,
+  token: initialUser ? storedToken : null,
   setToken: (token) => {
     if (token) localStorage.setItem("token", token); else localStorage.removeItem("token");
-    const payload = token ? decodeJwt(token) : null;
-    set({ token, user: payload ? { username: payload.username, role: payload.role } : null });
+    set({ token });
   },
   logout: () => {
     localStorage.removeItem("token");
-    set({ token: null, user: null });
+    set({ token: null });
   }
 }));
 

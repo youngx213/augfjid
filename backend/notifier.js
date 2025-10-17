@@ -1,7 +1,5 @@
 // notifier.js
-import Redis from "ioredis";
-import { config } from "./config.js";
-const redis = new Redis(config.redis.url);
+import { redis } from "./redis.js";
 
 /**
  * Ghi log vào Redis + publish pub/sub để Dashboard realtime

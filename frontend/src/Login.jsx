@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,7 +21,9 @@ export default function Login({ onLogin }) {
         setToken(data.token);
         onLogin?.(data);
         toast.success('Logged in successfully');
-        navigate(data.role === 'admin' ? '/admin' : '/dashboard');
+        if (data.role === 'admin') navigate('/admin');
+        else if (data.role === 'game') navigate('/minecraft');
+        else navigate('/dashboard');
       } else {
         setError(data.error || 'Login failed');
         toast.error(data.error || 'Login failed');
@@ -63,16 +64,7 @@ export default function Login({ onLogin }) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Key</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={key}
-              onChange={e => setKey(e.target.value)}
-              required
-            />
-          </div>
+          
 
           {error && (
             <div className="text-red-500 text-sm p-2 bg-red-50 rounded">

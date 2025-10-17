@@ -1,19 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import { api, getApiUrl } from "./lib/apiClient.js";
+import { decodeJwtPayload } from "./lib/tokenUtils.js";
+import TokenStatus from "./components/TokenStatus.jsx";
+import AppShell from "./components/AppShell.jsx";
 
-const API_URL = "http://localhost:3001";
-
-function decodeJwtPayload(token) {
-  try {
-    const payload = token.split(".")[1];
-    const padded = payload.padEnd(payload.length + (4 - (payload.length % 4)) % 4, "=");
-    const json = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(decodeURIComponent(escape(json)));
-  } catch {
-    return null;
-  }
-}
+const API_URL = getApiUrl();
 
 export default function Dashboard({ onLogout }) {
   const [accounts, setAccounts] = useState([]);
@@ -39,7 +32,7 @@ export default function Dashboard({ onLogout }) {
       navigate("/login");
       return;
     }
-    if (payload.role === "minecraft") {
+    if (payload.role === "game") {
       navigate("/minecraft");
       return;
     }
@@ -89,20 +82,11 @@ export default function Dashboard({ onLogout }) {
     if (pollRef.current) return;
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/api/accounts/${activeAccount}/queue`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setQueue(Array.isArray(data) ? data : []);
-        }
-        const res2 = await fetch(`${API_URL}/api/accounts/${activeAccount}/gifted`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res2.ok) {
-          const data2 = await res2.json();
-          setGifted(Array.isArray(data2) ? data2 : []);
-        }
+        api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
+        const { data } = await api.get(`/api/accounts/${activeAccount}/queue`);
+        setQueue(Array.isArray(data) ? data : []);
+        const { data: giftedData } = await api.get(`/api/accounts/${activeAccount}/gifted`);
+        setGifted(Array.isArray(giftedData) ? giftedData : []);
       } catch (err) {
         // ignore polling errors
       }
@@ -118,12 +102,16 @@ export default function Dashboard({ onLogout }) {
 
   async function fetchAccounts() {
     try {
-      const res = await fetch(`${API_URL}/api/accounts`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to fetch accounts");
-      const data = await res.json();
-      setAccounts(Array.isArray(data) ? data : []);
+      api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
+      const { data } = await api.get(`/api/accounts`);
+      if (data?.ok && Array.isArray(data.accounts)) {
+        setAccounts(data.accounts);
+      } else if (Array.isArray(data)) {
+        // fallback for legacy response shape
+        setAccounts(data);
+      } else {
+        setAccounts([]);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -132,12 +120,9 @@ export default function Dashboard({ onLogout }) {
   async function createAccount() {
     if (!newAccountName.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/api/accounts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ username: newAccountName.trim() })
-      });
-      if (res.ok) {
+      api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
+      const { data } = await api.post(`/api/accounts`, { username: newAccountName.trim() });
+      if (data?.ok) {
         setNewAccountName("");
         fetchAccounts();
       }
@@ -148,20 +133,16 @@ export default function Dashboard({ onLogout }) {
 
   async function startAccount(id) {
     try {
-      await fetch(`${API_URL}/api/accounts/${id}/start`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
+      await api.post(`/api/accounts/${id}/start`);
       fetchAccounts();
     } catch {}
   }
 
   async function stopAccount(id) {
     try {
-      await fetch(`${API_URL}/api/accounts/${id}/stop`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
+      await api.post(`/api/accounts/${id}/stop`);
       fetchAccounts();
     } catch {}
   }
@@ -173,86 +154,110 @@ export default function Dashboard({ onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex items-center justify-between bg-white p-4 rounded shadow">
-          <div>
-            <h1 className="text-xl font-bold">Dashboard</h1>
-            <p className="text-sm text-gray-600">Manage TikTok accounts and view logs</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/minecraft")} className="px-3 py-1 bg-gray-200 rounded">Minecraft</button>
-            <button onClick={handleLogout} className="px-3 py-1 bg-red-500 text-white rounded">Logout</button>
-          </div>
-        </header>
-
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-4 rounded shadow">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">TikTok Accounts</h2>
-              <div className="flex items-center gap-2">
-                <input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="New account username" className="px-3 py-2 border rounded" />
-                <button onClick={createAccount} className="px-3 py-2 bg-blue-600 text-white rounded">Create</button>
-                <button onClick={fetchAccounts} className="px-3 py-2 bg-gray-200 rounded">Refresh</button>
-              </div>
+    <AppShell
+      title="TikTok Bot Dashboard"
+      subtitle="Quản lý listener, hàng đợi và log realtime"
+      actions={
+        <>
+          <TokenStatus />
+          <button onClick={handleLogout} className="px-3 py-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg transition">Đăng xuất</button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 bg-white/5 border border-cyan-500/20 rounded-2xl p-6 shadow-lg shadow-cyan-500/10">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-white/95">TikTok Accounts</h2>
+              <p className="text-cyan-200/70 text-sm">Theo dõi trạng thái và điều khiển worker</p>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Username mới" className="px-4 py-2 bg-black/30 border border-cyan-500/30 rounded-lg text-white placeholder-cyan-200/60 focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+              <button onClick={createAccount} className="px-4 py-2 bg-cyan-500 text-black font-semibold rounded-lg hover:bg-cyan-400 transition">Thêm</button>
+              <button onClick={fetchAccounts} className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition">Làm mới</button>
+            </div>
+          </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left">ID</th>
-                    <th className="px-4 py-2 text-left">Username</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Actions</th>
+          <div className="overflow-hidden border border-white/10 rounded-xl">
+            <table className="w-full text-sm text-white/90">
+              <thead className="bg-white/10 text-cyan-200 uppercase text-xs tracking-wide">
+                <tr>
+                  <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">Username</th>
+                  <th className="px-4 py-3 text-left">Trạng thái</th>
+                  <th className="px-4 py-3 text-left">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="bg-black/30 divide-y divide-white/5">
+                {accounts.map(acc => (
+                  <tr key={acc.id} className="hover:bg-white/10 transition">
+                    <td className="px-4 py-3 font-mono text-xs text-cyan-200/80">{acc.id}</td>
+                    <td className="px-4 py-3 font-medium">{acc.username}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        acc.status === "running"
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : acc.status === "stopped"
+                          ? "bg-white/10 text-white/70"
+                          : "bg-amber-500/20 text-amber-200"
+                      }`}>
+                        {acc.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 space-x-2">
+                      <button onClick={() => { setActiveAccount(acc.id); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${activeAccount === acc.id ? "bg-indigo-500 text-white" : "bg-white/10 hover:bg-white/20"}`}>Xem</button>
+                      {acc.status !== "running" ? (
+                        <button onClick={() => startAccount(acc.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/90 text-black hover:bg-emerald-400 transition">Start</button>
+                      ) : (
+                        <button onClick={() => stopAccount(acc.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/80 text-white hover:bg-red-500 transition">Stop</button>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {accounts.map(acc => (
-                    <tr key={acc.id} className="border-t">
-                      <td className="px-4 py-3">{acc.id}</td>
-                      <td className="px-4 py-3 font-mono">{acc.username}</td>
-                      <td className="px-4 py-3">{acc.status}</td>
-                      <td className="px-4 py-3">
-                        <button onClick={() => { setActiveAccount(acc.id); }} className="mr-2 px-3 py-1 bg-indigo-600 text-white rounded">Select</button>
-                        {acc.status !== "running" ? (
-                          <button onClick={() => startAccount(acc.id)} className="mr-2 px-3 py-1 bg-green-600 text-white rounded">Start</button>
-                        ) : (
-                          <button onClick={() => stopAccount(acc.id)} className="mr-2 px-3 py-1 bg-red-600 text-white rounded">Stop</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside className="bg-white/5 border border-cyan-500/20 rounded-2xl p-6 shadow-lg shadow-cyan-500/10 space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-white/90">Thông tin queue</h3>
+            <p className="text-cyan-200/70 text-sm">{activeAccount ? `Account ID: ${activeAccount}` : "Chưa chọn account"}</p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-200 tracking-wide uppercase mb-2">Queue</h4>
+            <div className="space-y-2 max-h-48 overflow-auto pr-1">
+              {queue.length === 0 && <div className="text-white/60 text-sm">Queue trống</div>}
+              {queue.map(q => (
+                <div key={q.jobId} className="p-3 bg-black/30 border border-white/10 rounded-lg text-sm">
+                  <div className="font-semibold text-white">@{q.user}</div>
+                  <div className="text-cyan-200/70 text-xs">{q.status}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          <aside className="bg-white p-4 rounded shadow">
-            <h3 className="font-semibold mb-2">Selected Account</h3>
-            <div className="mb-4 text-sm text-gray-600">{activeAccount ? `ID: ${activeAccount}` : "No account selected"}</div>
-
-            <h4 className="font-medium mt-4 mb-2">Queue</h4>
-            <div className="space-y-2 max-h-48 overflow-auto text-sm">
-              {queue.length === 0 && <div className="text-gray-500">Queue is empty</div>}
-              {queue.map(q => <div key={q.jobId} className="p-2 border rounded">{q.user} - {q.status}</div>)}
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-200 tracking-wide uppercase mb-2">Gifted</h4>
+            <div className="space-y-2 max-h-40 overflow-auto pr-1">
+              {gifted.length === 0 && <div className="text-white/60 text-sm">Chưa có dữ liệu</div>}
+              {gifted.map((name) => (
+                <div key={name} className="p-2 bg-black/30 border border-white/10 rounded-lg text-sm">@{name}</div>
+              ))}
             </div>
-
-            <h4 className="font-medium mt-4 mb-2">Gifted</h4>
-            <div className="space-y-2 max-h-40 overflow-auto text-sm">
-              {gifted.length === 0 && <div className="text-gray-500">No gifted entries</div>}
-              {gifted.map(g => <div key={g.id} className="p-2 border rounded">{g.user} - {g.giftName}</div>)}
-            </div>
-          </aside>
-        </section>
-
-        <section className="bg-white p-4 rounded shadow">
-          <h3 className="font-semibold mb-2">Realtime Logs</h3>
-          <div className="max-h-64 overflow-auto font-mono text-sm bg-gray-50 p-2 rounded">
-            {logs.map((l, i) => <div key={i} className="py-1 border-b last:border-b-0">{l}</div>)}
           </div>
-        </section>
+        </aside>
       </div>
-    </div>
+
+      <section className="bg-white/5 border border-cyan-500/20 rounded-2xl p-6 shadow-lg shadow-cyan-500/10">
+        <h3 className="text-lg font-semibold text-white/90 mb-3">Realtime Logs</h3>
+        <div className="max-h-64 overflow-auto bg-black/40 border border-white/10 rounded-xl p-4 font-mono text-xs text-cyan-200/80 space-y-2">
+          {logs.map((l, i) => (
+            <div key={i} className="py-1 border-b border-white/5 last:border-b-0">{l}</div>
+          ))}
+        </div>
+      </section>
+    </AppShell>
   );
 }

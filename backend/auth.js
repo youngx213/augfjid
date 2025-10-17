@@ -1,9 +1,9 @@
-import Redis from "ioredis";
+import { redis } from "./redis.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { config } from "./config.js";
 
-const redis = new Redis(config.redis.url);
 const JWT_SECRET = config.jwtSecret;
 
 // Kiểm tra key hợp lệ
@@ -39,24 +39,31 @@ export function generateKey(length = 16) {
   return crypto.randomBytes(bytes).toString("hex").slice(0, length);
 }
 
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password || "").digest("hex");
+async function hashPassword(password) {
+  const salt = await bcrypt.genSalt(10);
+  return await bcrypt.hash(password || "", salt);
 }
 
 // Đăng ký tài khoản
 export async function register(username, password, key) {
-  if (!username || !password || !key) {
-    return { ok: false, error: "username, password và key là bắt buộc" };
+  if (!username || !password) {
+    return { ok: false, error: "username và password là bắt buộc" };
   }
 
-  const role = await getRoleByKey(key);
-  if (!role) return { ok: false, error: "Key không hợp lệ" };
+  // Determine role strictly by key; default to "bot" if no key/invalid
+  let role = null;
+  if (key) {
+    role = await getRoleByKey(key);
+  }
+  if (!role) role = "bot";
 
   const exists = await redis.hget("users", username);
   if (exists) return { ok: false, error: "Tài khoản đã tồn tại" };
 
-  const passwordHash = hashPassword(password);
+  const passwordHash = await hashPassword(password);
+  const userId = crypto.createHash("sha256").update(`u:${username}`).digest("hex").slice(0, 16);
   const userObj = {
+    userId,
     username,
     passwordHash,
     role,
@@ -66,8 +73,33 @@ export async function register(username, password, key) {
 
   await redis.hset("users", username, JSON.stringify(userObj));
 
-  const token = jwt.sign({ username, role }, JWT_SECRET, { expiresIn: "7d" });
-  return { ok: true, role, token, username };
+  // Thêm dữ liệu mẫu cho user role=game (chuẩn hoá schema presets)
+  if (role === "game") {
+    const samplePresets = [
+      { id: "follow", giftName: "Follow", amount: 1, coinsPerUnit: 1, commands: ["say Thanks for the follow!"], soundFile: "sub.mp3", imageUrl: "", enabled: true },
+      { id: "rose", giftName: "Rose", amount: 1, coinsPerUnit: 1, commands: ["give @p tnt 1"], soundFile: "bue.mp3", imageUrl: "", enabled: true },
+      { id: "perfume", giftName: "Perfume", amount: 20, coinsPerUnit: 20, commands: ["give @p tnt 20"], soundFile: "chipi.mp3", imageUrl: "", enabled: true }
+    ];
+    await redis.hset(`game:${username}:presets`, "data", JSON.stringify(samplePresets));
+    
+    const sampleOverlay = {
+      goalLikes: `https://app.streamtoearn.io/overlay/${username}/goal-likes`,
+      smartBar: `https://app.streamtoearn.io/overlay/${username}/smart-bar`,
+      topGifters: `https://app.streamtoearn.io/overlay/${username}/top-gifters`
+    };
+    await redis.hset(`game:${username}:overlay`, "data", JSON.stringify(sampleOverlay));
+    
+    const sampleStats = {
+      coins: 0,
+      viewers: 0,
+      winGoal: 100,
+      timer: 0
+    };
+    await redis.hset(`game:${username}:stats`, "data", JSON.stringify(sampleStats));
+  }
+
+  const token = jwt.sign({ username, role, userId }, JWT_SECRET, { expiresIn: "6h" });
+  return { ok: true, role, token, username, userId };
 }
 
 // Đăng nhập
@@ -80,11 +112,11 @@ export async function login(username, password) {
   let user;
   try { user = JSON.parse(raw); } catch { return { ok: false, error: "Dữ liệu user lỗi" }; }
 
-  const passwordHash = hashPassword(password);
-  if (user.passwordHash !== passwordHash) return { ok: false, error: "Sai mật khẩu" };
+  const isMatch = await bcrypt.compare(password || "", user.passwordHash || "");
+  if (!isMatch) return { ok: false, error: "Sai mật khẩu" };
 
-  const token = jwt.sign({ username, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-  return { ok: true, token, role: user.role, username };
+  const token = jwt.sign({ username, role: user.role, userId: user.userId }, JWT_SECRET, { expiresIn: "6h" });
+  return { ok: true, token, role: user.role, username, userId: user.userId };
 }
 
 // Verify admin token -> returns decoded payload or null

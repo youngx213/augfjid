@@ -1,8 +1,5 @@
 // queue-worker.js
-import Redis from "ioredis";
-import { config } from "./config.js";
-
-const redis = new Redis(config.redis.url);
+import { redis } from "./redis.js";
 
 /**
  * Ghi log để Dashboard thấy realtime
@@ -34,29 +31,24 @@ async function processJob(accountId, job) {
 /**
  * Worker chạy vòng lặp xử lý queue tuần tự
  */
-export async function startQueueWorker(accountId) {
+export async function startQueueWorker(accountId, signal) {
   await writeLog(accountId, "info", `Queue worker khởi động cho account ${accountId}`);
 
-  while (true) {
-    // lấy job từ queue
-    const jobStr = await redis.lpop(`queue:${accountId}`);
-    if (!jobStr) {
-      await new Promise(r => setTimeout(r, 2000)); // chờ 2s rồi check lại
-      continue;
-    }
+  while (!signal?.aborted) {
+    const jobStr = await redis.blpop(`queue:${accountId}`, 5);
+    if (!jobStr) continue;
+    const payload = Array.isArray(jobStr) ? jobStr[1] : jobStr;
 
     let job;
     try {
-      job = JSON.parse(jobStr);
+      job = JSON.parse(payload);
     } catch (e) {
       await writeLog(accountId, "error", `Lỗi parse job: ${e.message}`);
       continue;
     }
 
-    // lưu job vào Redis hash để quản lý trạng thái
     await redis.hset(`job:${accountId}:${job.jobId}`, job);
 
-    // xử lý job
     try {
       await processJob(accountId, job);
     } catch (err) {

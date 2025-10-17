@@ -1,8 +1,6 @@
 import { WebcastPushConnection } from "tiktok-live-connector";
 import { markGift, hasGifted } from "./gift-tracker.js";
-import Redis from "ioredis";
-
-const redis = new Redis();
+import { redis } from "./redis.js";
 let ioRef = null;
 
 // Thêm Map để quản lý listeners

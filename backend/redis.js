@@ -1,5 +1,8 @@
 // redis.js
 import Redis from "ioredis";
+import { config } from "./config.js";
 
-export const redis = new Redis();
-export const redisSub = new Redis(); // dùng cho pub/sub
+const redisUrl = config.redis.url;
+
+export const redis = new Redis(redisUrl);
+export const redisSub = new Redis(redisUrl); // dùng cho pub/sub

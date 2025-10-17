@@ -1,6 +1,5 @@
 // gift-tracker.js
-import Redis from "ioredis";
-const redis = new Redis();
+import { redis } from "./redis.js";
 
 /**
  * Đánh dấu 1 user đã tặng quà trong account cụ thể

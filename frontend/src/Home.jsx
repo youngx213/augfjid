@@ -170,6 +170,13 @@ export default function Home() {
                 Bắt đầu (Dùng thử)
               </button>
 
+              <button
+                onClick={() => navigate("/pricing")}
+                className="px-6 py-3 border border-cyan-400/40 text-cyan-200 rounded-xl hover:bg-cyan-400/10 transition"
+              >
+                Xem bảng giá
+              </button>
+
               <a
                 href="mailto:sales@tooltiktok.example?subject=Contact%20Sales"
                 className="px-6 py-3 border border-cyan-400/40 text-cyan-200 rounded-xl hover:bg-cyan-400/10 transition flex items-center gap-2"

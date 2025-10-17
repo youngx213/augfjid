@@ -4,17 +4,27 @@ import cors from 'cors';
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { config, requireProdSecret } from "./config.js";
-import Redis from "ioredis";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { notifyUser } from "./notifier.js";
 import { startListener, stopListener, getStatus, setSocketIO } from "./listener.js";
 import { register, login, getAllUsers, deleteUser, addKey, removeKey, verifyAdminToken, generateKey } from "./auth.js";
 import { requireAuth, requireRole } from "./middleware/auth.js";
+import { workerManager } from "./workerManager.js";
+import { router as accountsRouter } from "./routes/accounts.js";
+import { router as presetsRouter } from "./routes/game/presets.js";
+import { router as overlayRouter } from "./routes/game/overlay.js";
+import { router as statsRouter } from "./routes/game/stats.js";
+import { router as leaderboardRouter } from "./routes/game/leaderboard.js";
+import { router as historyRouter } from "./routes/game/history.js";
+import { router as pluginRouter, attachSocket as attachPluginSocket } from "./routes/plugin.js";
+import { router as paymentsRouter } from "./routes/payments.js";
 import { body } from "express-validator";
 import { handleValidation } from "./middleware/validate.js";
 import { notFound, errorHandler } from "./middleware/error.js";
 import { logger } from "./logger.js";
+import jwt from "jsonwebtoken";
+import { redisSub } from "./redis.js";
 
 requireProdSecret();
 const app = express();
@@ -24,29 +34,75 @@ app.use(cors({ origin: config.corsOrigin, credentials: true }));
 const limiter = rateLimit({ windowMs: config.rateLimit.windowMs, max: config.rateLimit.max, standardHeaders: true, legacyHeaders: false });
 app.use(limiter);
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*" } });
+const io = new Server(httpServer, { cors: { origin: config.corsOrigin, credentials: true } });
+workerManager.setIO(io);
+
+// Socket.IO token auth
+io.use((socket, next) => {
+  const t = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
+  if (!t) return next(new Error("Unauthorized"));
+  try {
+    jwt.verify(t, config.jwtSecret);
+    next();
+  } catch {
+    next(new Error("Unauthorized"));
+  }
+});
 
 // cors configured above
 
-// Kết nối Redis
-const redis = new Redis(config.redis.url);
+// Kết nối Redis (sử dụng instance chia sẻ trong redis.js nếu cần ở nơi khác)
 
 // Cho listener sử dụng WebSocket
 setSocketIO(io);
 
-// Quản lý accounts demo
-let accounts = [{ id: "1", username: "acc1", status: "stopped" }];
+// Deprecated runtime accounts removed; stats will be computed via Redis data
 
 // Khi có client kết nối socket
 io.on("connection", (socket) => {
   console.log("🔌 Client connected");
-  socket.on("disconnect", () => console.log("❌ Client disconnected"));
+  
+  // Join room based on user role and username
+  socket.on("join:game", () => {
+    try {
+      const t = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
+      const payload = jwt.verify(t, config.jwtSecret);
+      const username = payload?.username;
+      if (username) {
+        socket.join(`overlay:${username}`);
+        console.log(`🎮 Game client joined room: overlay:${username}`);
+      }
+    } catch {}
+  });
+  
+  socket.on("join:plugin", () => {
+    try {
+      const t = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
+      const payload = jwt.verify(t, config.jwtSecret);
+      const username = payload?.username;
+      if (username) {
+        socket.join(`plugin:${username}`);
+        console.log(`🔌 Plugin client joined room: plugin:${username}`);
+        // Emit plugin ready event
+        socket.emit("plugin:ready", { status: "connected" });
+      }
+    } catch {}
+  });
+
+  socket.on("join:user", (data) => {
+    const { userId } = data;
+    socket.join(`user:${userId}`);
+    console.log(`👤 Dashboard joined room: user:${userId}`);
+  });
+  
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected");
+  });
 });
 
-// Redis pub/sub để đẩy log realtime ra socket
-const sub = new Redis(config.redis.url);
-sub.psubscribe("log:*");
-sub.on("pmessage", (pattern, channel, message) => {
+// Redis pub/sub để đẩy log realtime ra socket (dùng shared subscriber)
+redisSub.psubscribe("log:*");
+redisSub.on("pmessage", (pattern, channel, message) => {
   const accountId = channel.split(":")[1];
   const entry = JSON.parse(message);
   io.emit("log", { accountId, ...entry });
@@ -59,87 +115,14 @@ app.use((req, res, next) => {
 });
 
 // ============ API ROUTES ============
-app.get("/api/accounts", (req, res) => {
-  accounts = accounts.map(a => ({ ...a, status: getStatus(a.id) }));
-  res.json(accounts);
-});
-
-app.post(
-  "/api/accounts",
-  requireAuth,
-  body("username").isString().trim().notEmpty(),
-  handleValidation,
-  (req, res) => {
-    const { username } = req.body;
-    const id = String(Date.now());
-    accounts.push({ id, username, status: "stopped", owner: req.user.username });
-    res.json({ ok: true, id });
-  }
-);
-
-app.post("/api/accounts/:id/start", requireAuth, async (req, res) => {
-  const acc = accounts.find(a => a.id === req.params.id);
-  if (acc) {
-    await startListener(acc.id, acc.username);
-    acc.status = "running";
-  }
-  res.json({ ok: true });
-});
-
-app.post("/api/accounts/:id/stop", requireAuth, async (req, res) => {
-  const acc = accounts.find(a => a.id === req.params.id);
-  if (acc) {
-    await stopListener(acc.id);
-    acc.status = "stopped";
-  }
-  res.json({ ok: true });
-});
-
-app.get("/api/accounts/:id/queue", async (req, res) => {
-  const jobs = await redis.lrange(`queue:${req.params.id}`, 0, -1);
-  res.json(jobs.map(j => JSON.parse(j)));
-});
-
-app.post("/api/accounts/:id/queue/:jobId/remove", async (req, res) => {
-  const jobs = await redis.lrange(`queue:${req.params.id}`, 0, -1);
-  const job = jobs.find(j => JSON.parse(j).jobId == req.params.jobId);
-  if (job) await redis.lrem(`queue:${req.params.id}`, 1, job);
-  res.json({ ok: true });
-});
-
-app.post("/api/accounts/:id/queue/:jobId/markdone", async (req, res) => {
-  // Có thể lưu trạng thái job sang Redis hash
-  res.json({ ok: true });
-});
-
-app.get("/api/accounts/:id/gifted", async (req, res) => {
-  const users = await redis.smembers(`gifted:${req.params.id}`);
-  res.json(users);
-});
-
-app.get("/api/accounts/:id/logs", async (req, res) => {
-  const logs = await redis.lrange(`logs:${req.params.id}`, 0, 50);
-  res.json(logs.map(l => JSON.parse(l)));
-});
-
-app.post(
-  "/api/accounts/:id/notify",
-  requireAuth,
-  body("users").isArray({ min: 1 }),
-  body("message").isString().trim().notEmpty(),
-  handleValidation,
-  async (req, res) => {
-    const { users, message } = req.body;
-    for (const u of users) await notifyUser(req.params.id, u, message);
-    res.json({ ok: true });
-  }
-);
+app.use("/api/accounts", accountsRouter);
+app.use("/api/payments", paymentsRouter);
 
 app.post(
   "/api/auth/register",
   body("username").isString().trim().notEmpty(),
   body("password").isString().isLength({ min: 6 }),
-  body("key").isString().trim().notEmpty(),
+  body("key").optional().isString().trim().notEmpty(),
   handleValidation,
   async (req, res) => {
     const { username, password, key } = req.body;
@@ -205,16 +188,57 @@ app.post(
     res.json({ ok: true });
   }
 );
-app.post("/api/admin/keys/gen", requireAdmin, async (req, res) => {
-  const key = generateKey();
-  await addKey(key);
-  res.json({ ok: true, key });
+app.post(
+  "/api/admin/keys/gen",
+  requireAdmin,
+  body("role").optional().isString().trim().notEmpty(),
+  handleValidation,
+  async (req, res) => {
+    const key = generateKey();
+    await addKey(key, req.body.role || undefined);
+    res.json({ ok: true, key, role: req.body.role || "game" });
+  }
+);
+
+// Admin stats route
+app.get("/api/admin/stats", requireAdmin, async (req, res) => {
+  const users = await getAllUsers();
+  // Count total TikTok accounts across users by scanning Redis lists matching accounts:*
+  try {
+    const { redis } = await import("./redis.js");
+    const keys = await redis.keys("accounts:*");
+    let tiktokAccounts = 0;
+    if (keys.length) {
+      const pipe = redis.pipeline();
+      keys.forEach((k) => pipe.llen(k));
+      const lens = await pipe.exec();
+      tiktokAccounts = lens.reduce((sum, [, len]) => sum + (Number(len) || 0), 0);
+    }
+    res.json({ total: users.length, active: 0, tiktokAccounts });
+  } catch {
+    res.json({ total: users.length, active: 0, tiktokAccounts: 0 });
+  }
 });
+
+// User gifts placeholder routes to avoid 404
+app.get("/api/user/gifts", requireAuth, (req, res) => res.json([]));
+app.post("/api/user/gifts", requireAuth, (req, res) => res.json({ ok: true }));
+app.post("/api/user/gifts/remove", requireAuth, (req, res) => res.json({ ok: true }));
+
+// ============ GAME ROUTES (for role=game) ============
+app.use("/api/game/presets", presetsRouter);
+app.use("/api/game/overlay", overlayRouter);
+app.use("/api/game/stats", statsRouter);
+app.use("/api/game/leaderboard", leaderboardRouter);
+app.use("/api/game/history", historyRouter);
+
+// ============ PLUGIN ROUTES (for Minecraft plugin) ============
+app.use("/api/plugin", attachPluginSocket(io));
 
 // Error middleware
 app.use(notFound);
 app.use(errorHandler);
 // Start server
-httpServer.listen(3001, () =>
-  console.log("✅ Backend API + WebSocket chạy ở http://localhost:3001")
+httpServer.listen(config.port, () =>
+  console.log(`✅ Backend API + WebSocket chạy ở http://localhost:${config.port}`)
 );
