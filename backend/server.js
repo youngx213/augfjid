@@ -14,6 +14,8 @@ import { workerManager } from "./workerManager.js";
 import { router as accountsRouter } from "./routes/accounts.js";
 import { router as presetsRouter } from "./routes/game/presets.js";
 import { router as overlayRouter } from "./routes/game/overlay.js";
+import overlayGeneratorRouter from "./routes/overlay.js";
+import uploadRouter from "./routes/upload.js";
 import { router as statsRouter } from "./routes/game/stats.js";
 import { router as leaderboardRouter } from "./routes/game/leaderboard.js";
 import { router as historyRouter } from "./routes/game/history.js";
@@ -24,15 +26,45 @@ import { handleValidation } from "./middleware/validate.js";
 import { notFound, errorHandler } from "./middleware/error.js";
 import { logger } from "./logger.js";
 import jwt from "jsonwebtoken";
-import { redisSub } from "./redis.js";
+import { redisSub, testRedisConnection } from "./redis.js";
 
 requireProdSecret();
+
 const app = express();
 app.use(express.json());
 app.use(helmet());
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
 const limiter = rateLimit({ windowMs: config.rateLimit.windowMs, max: config.rateLimit.max, standardHeaders: true, legacyHeaders: false });
 app.use(limiter);
+
+// Health check endpoints
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "healthy", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: process.env.npm_package_version || "1.0.0"
+  });
+});
+
+app.get("/health/redis", async (req, res) => {
+  try {
+    const isHealthy = await testRedisConnection();
+    res.json({ 
+      status: isHealthy ? "healthy" : "unhealthy",
+      service: "redis",
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      service: "redis",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: config.corsOrigin, credentials: true } });
 workerManager.setIO(io);
@@ -231,6 +263,10 @@ app.use("/api/game/overlay", overlayRouter);
 app.use("/api/game/stats", statsRouter);
 app.use("/api/game/leaderboard", leaderboardRouter);
 app.use("/api/game/history", historyRouter);
+
+// ============ OVERLAY GENERATOR ROUTES ============
+app.use("/overlay", overlayGeneratorRouter);
+app.use("/upload", uploadRouter);
 
 // ============ PLUGIN ROUTES (for Minecraft plugin) ============
 app.use("/api/plugin", attachPluginSocket(io));

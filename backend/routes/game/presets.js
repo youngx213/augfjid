@@ -8,7 +8,8 @@ export const router = express.Router();
 router.use(requireAuth, requireRole("game"));
 
 router.get("/", async (req, res) => {
-  const presets = await getPresets(req.user.username);
+  const username = req.query.username || req.user.username;
+  const presets = await getPresets(username);
   res.json({ ok: true, presets });
 });
 
@@ -17,7 +18,8 @@ router.post(
   body("presets").isArray(),
   handleValidation,
   async (req, res) => {
-    await setPresets(req.user.username, req.body.presets);
+    const username = req.body.username || req.user.username;
+    await setPresets(username, req.body.presets);
     res.json({ ok: true });
   }
 );

@@ -8,7 +8,7 @@ export const config = {
   env,
   port: parseInt(process.env.PORT || "3001", 10),
   corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  jwtSecret: process.env.JWT_SECRET || "453782thien",
+  jwtSecret: process.env.JWT_SECRET || (env === "production" ? null : "dev-secret-change-in-production"),
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10),
     max: parseInt(process.env.RATE_LIMIT_MAX || "120", 10)
@@ -16,24 +16,36 @@ export const config = {
   redis: {
     url: process.env.REDIS_URL || undefined
   },
-  pluginKey: process.env.PLUGIN_KEY || "453782thien",
+  pluginKey: process.env.PLUGIN_KEY || (env === "production" ? null : "dev-plugin-key"),
   sepay: {
-    apiKey: process.env.SEPAY_API_KEY || "DMGO7V5AM6RFCG9BPVHQP06RV8P3F4RLASZYYN31XIJLRJFWTOIXDEUUM7JWQXAE",
-    accountNumber: process.env.SEPAY_ACCOUNT_NO || "9789422104",
+    apiKey: process.env.SEPAY_API_KEY || null,
+    accountNumber: process.env.SEPAY_ACCOUNT_NO || null,
     bankCode: process.env.SEPAY_BANK_CODE || "Mbbank",
     template: process.env.SEPAY_QR_TEMPLATE || "compact",
-    accountName: process.env.SEPAY_ACCOUNT_NAME || "TRAN HUU THIEN",
-    returnUrl: process.env.SEPAY_RETURN_URL || "https://be3bb967a6ed.ngrok-free.app/payment/success",
-    callbackUrl: process.env.SEPAY_CALLBACK_URL || "https://be3bb967a6ed.ngrok-free.app/api/payments/callback",
-    webhookToken: process.env.SEPAY_WEBHOOK_TOKEN || "huuthien453782@"
+    accountName: process.env.SEPAY_ACCOUNT_NAME || null,
+    returnUrl: process.env.SEPAY_RETURN_URL || null,
+    callbackUrl: process.env.SEPAY_CALLBACK_URL || null,
+    webhookToken: process.env.SEPAY_WEBHOOK_TOKEN || null
   }
 };
 
 export function requireProdSecret() {
-  if (env === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "453782thien")) {
-    // eslint-disable-next-line no-console
-    console.error("JWT_SECRET must be set in production");
-    process.exit(1);
+  if (env === "production") {
+    const requiredSecrets = [
+      { key: "JWT_SECRET", value: process.env.JWT_SECRET },
+      { key: "REDIS_URL", value: process.env.REDIS_URL },
+      { key: "SEPAY_API_KEY", value: process.env.SEPAY_API_KEY },
+      { key: "SEPAY_ACCOUNT_NO", value: process.env.SEPAY_ACCOUNT_NO },
+      { key: "SEPAY_WEBHOOK_TOKEN", value: process.env.SEPAY_WEBHOOK_TOKEN }
+    ];
+    
+    const missingSecrets = requiredSecrets.filter(secret => !secret.value);
+    
+    if (missingSecrets.length > 0) {
+      console.error("Missing required environment variables in production:");
+      missingSecrets.forEach(secret => console.error(`  - ${secret.key}`));
+      process.exit(1);
+    }
   }
 }
 

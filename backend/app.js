@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { config, requireProdSecret } from "./config.js";
 import { router as paymentsRouter } from "./routes/payments.js";
+import { router as pluginRouter } from "./routes/plugin.js";
 
 requireProdSecret();
 
@@ -21,6 +22,7 @@ export function createApp() {
   app.use(limiter);
 
   app.use("/api/payments", paymentsRouter);
+  app.use("/api/plugin", pluginRouter);
 
   app.get("/health", (req, res) => {
     res.json({ ok: true });
