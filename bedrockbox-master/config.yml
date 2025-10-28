@@ -11,7 +11,7 @@ streamer: "streamer"
 
 # Backend API Configuration
 api:
-  base_url: "http://localhost:3001/api/plugin"
+  base_url: "http://eric-software.click/api/plugin"
   timeout: 5000 # milliseconds
   retry_attempts: 3
 

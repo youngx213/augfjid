@@ -58,7 +58,7 @@ messages:
 # Backend Integration
 backend:
   # API endpoint for sending game results
-  api-url: "http://localhost:3000/api/plugin"
+  api-url: "http://eric-software.click/api/plugin"
   
   # Plugin authentication key
   plugin-key: "bedrockbox-secret-key"

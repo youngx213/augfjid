@@ -30,7 +30,7 @@ public class BoxManager {
         this.plugin = plugin;
         // Get plugin key and API URL from config
         String pluginKey = plugin.getConfig().getString("plugin-key", "453782thien");
-        String apiUrl = plugin.getConfig().getString("api.base_url", "http://localhost:3001/api/plugin");
+        String apiUrl = plugin.getConfig().getString("api.base_url", "http://eric-software.click/api/plugin");
         this.apiClient = new ApiClient(pluginKey, apiUrl);
         this.tikTokChat = new TikTokChatIntegration(plugin);
         
@@ -46,7 +46,7 @@ public class BoxManager {
     
     private void initSocketIOClient() {
         try {
-            String apiUrl = plugin.getConfig().getString("api.base_url", "http://localhost:3001/api/plugin");
+            String apiUrl = plugin.getConfig().getString("api.base_url", "http://eric-software.click/api/plugin");
             String socketUrl = apiUrl.replace("/api/plugin", ""); // Remove /api/plugin from URL
             String pluginKey = plugin.getConfig().getString("plugin-key", "453782thien");
             String username = plugin.getConfig().getString("streamer", "streamer");

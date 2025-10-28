@@ -7,7 +7,7 @@ const env = process.env.NODE_ENV || "development";
 export const config = {
   env,
   port: parseInt(process.env.PORT || "3001", 10),
-  corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  corsOrigin: process.env.CORS_ORIGIN || "https://eric-software.click",
   jwtSecret: process.env.JWT_SECRET || (env === "production" ? null : "dev-secret-change-in-production"),
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10),

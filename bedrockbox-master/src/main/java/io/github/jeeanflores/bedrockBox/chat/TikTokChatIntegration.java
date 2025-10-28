@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 public class TikTokChatIntegration {
     
     private final BedrockBoxPlugin plugin;
-    private final String API_URL = "http://localhost:3001/api/tiktok/chat";
+    private final String API_URL = "http://eric-software.click/api/tiktok/chat";
     private boolean chatEnabled = false;
     private String currentStreamer = null;
     
