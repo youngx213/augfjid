@@ -73,7 +73,23 @@ export default function AdminDashboard() {
     <AppShell
       title="Admin Control Center"
       subtitle="Quản lý user, key và thống kê hệ thống"
-      actions={<TokenStatus />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <button 
+            onClick={() => navigate('/business')} 
+            className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all text-sm font-medium shadow-lg"
+          >
+            💼 Business Dashboard
+          </button>
+          <button 
+            onClick={() => navigate('/i18n')} 
+            className="px-3 py-2 bg-purple-500/90 hover:bg-purple-500 text-white rounded-lg transition text-sm"
+          >
+            🌐 i18n
+          </button>
+          <TokenStatus />
+        </div>
+      }
     >
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard title="Total Users" value={stats.total} icon="👥" />

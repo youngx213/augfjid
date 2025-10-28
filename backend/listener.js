@@ -1,6 +1,8 @@
 import { WebcastPushConnection } from "tiktok-live-connector";
 import { markGift, hasGifted } from "./gift-tracker.js";
 import { redis } from "./redis.js";
+import { analyticsService } from "./services/analyticsService.js";
+import { gameFeaturesService } from "./services/gameFeaturesService.js";
 let ioRef = null;
 
 // Thêm Map để quản lý listeners
@@ -58,6 +60,32 @@ export async function startListener(accountId, username) {
   tiktok.on("gift", async (data) => {
     await writeLog(accountId, "gift", `${data.uniqueId} tặng ${data.giftName}`);
     await markGift(accountId, data.uniqueId);
+    
+    // Ghi nhận gift vào analytics
+    analyticsService.recordGift(accountId, {
+      giftName: data.giftName,
+      giftValue: data.diamondCount || 1,
+      username: data.uniqueId,
+      timestamp: Date.now()
+    });
+    
+    // Cập nhật leaderboard
+    gameFeaturesService.updateLeaderboard(accountId, {
+      gifts: 1,
+      revenue: data.diamondCount || 1,
+      viewers: 1
+    });
+    
+    // Kiểm tra achievements
+    const analytics = analyticsService.getAnalyticsSummary(accountId);
+    if (analytics) {
+      await gameFeaturesService.checkAchievements(accountId, {
+        gifts: 1,
+        totalGifts: analytics.totalGifts,
+        totalRevenue: analytics.totalRevenue,
+        uniqueViewers: analytics.uniqueViewers
+      });
+    }
   });
 
   tiktok.on("chat", async (chat) => {

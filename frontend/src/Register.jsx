@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { api } from "./lib/apiClient.js";
+import { useToast } from "./components/Toast.jsx";
+import { FormCard, FormField, FormButton, FormError, FormSuccess, FormIcons } from "./components/FormComponents.jsx";
+import AppShell from "./components/AppShell.jsx";
 
 export default function Register({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -8,18 +12,22 @@ export default function Register({ onLogin }) {
   const [key, setKey] = useState("");
   const [role] = useState("bot");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { success: showSuccess, error: showError } = useToast();
 
   async function handleRegister(e) {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
       const body = { username, password };
       if (key.trim()) body.key = key.trim();
       if (role) body.role = role;
+      
       const { data } = await api.post(`/api/auth/register`, body);
 
       if (data && data.ok) {
@@ -27,90 +35,127 @@ export default function Register({ onLogin }) {
         if (data.token) {
           localStorage.setItem("token", data.token);
           if (onLogin) onLogin(data);
+          showSuccess('Đăng ký thành công', 'Chào mừng bạn đến với hệ thống!');
+          
           // navigate according to role if provided
-          const r = data.role || (data.user && data.user.role);
-          if (r === "admin") navigate("/admin");
-          else if (r === "game") navigate("/minecraft");
-          else navigate("/dashboard");
+          setTimeout(() => {
+            const r = data.role || (data.user && data.user.role);
+            if (r === "admin") navigate("/admin");
+            else if (r === "game") navigate("/minecraft");
+            else navigate("/dashboard");
+          }, 1000);
           return;
         }
 
         // no token: show success and redirect to login
-        setUsername("");
-        setPassword("");
-        setKey("");
-        navigate("/login");
+        setSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+        showSuccess('Đăng ký thành công', 'Vui lòng đăng nhập để tiếp tục');
+        
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       } else {
-        setError(data.error || "Đăng ký thất bại");
+        const errorMsg = data.error || "Đăng ký thất bại";
+        setError(errorMsg);
+        showError('Lỗi đăng ký', errorMsg);
       }
     } catch (err) {
-      setError(err.message || "Lỗi kết nối tới server");
+      const errorMsg = err.response?.data?.error || err.message || "Lỗi kết nối tới server";
+      setError(errorMsg);
+      showError('Lỗi kết nối', errorMsg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center mb-6 text-gray-800">Register</h2>
-
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input
+    <AppShell
+      title="Đăng ký"
+      subtitle="Tạo tài khoản mới để bắt đầu"
+      actions={
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/')}
+          className="px-4 py-2 text-cyan-200 hover:text-white transition"
+        >
+          ← Về trang chủ
+        </motion.button>
+      }
+    >
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <FormCard 
+          title="Đăng ký tài khoản" 
+          subtitle="Điền thông tin để tạo tài khoản mới"
+          className="w-full max-w-md"
+        >
+          <form onSubmit={handleRegister} className="space-y-6">
+            <FormField
+              label="Tên đăng nhập"
+              type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder="Nhập tên đăng nhập"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="username"
+              icon={FormIcons.user}
+              error={error && error.includes('username') ? error : null}
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
+            <FormField
+              label="Mật khẩu"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="password"
+              icon={FormIcons.lock}
+              error={error && error.includes('password') ? error : null}
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Key (optional)</label>
-            <input
+            <FormField
+              label="Mã đăng ký"
+              type="text"
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono"
-              placeholder="registration key"
+              placeholder="Nhập mã đăng ký (tùy chọn)"
+              icon={FormIcons.key}
+              error={error && error.includes('key') ? error : null}
             />
-            <p className="text-xs text-gray-500 mt-1">Không nhập key sẽ đăng ký theo role mặc định của hệ thống.</p>
-          </div>
+            
+            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+              <p className="text-cyan-200/80 text-sm">
+                <strong>Lưu ý:</strong> Mã đăng ký là bắt buộc để tạo tài khoản. 
+                Không có mã đăng ký hợp lệ sẽ không thể đăng ký.
+              </p>
+            </div>
 
-          
+            <FormSuccess message={success} />
+            <FormError error={error} />
 
-          {error && <div className="text-red-500 text-sm p-2 bg-red-50 rounded">{error}</div>}
+            <FormButton
+              type="submit"
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+            >
+              {loading ? 'Đang xử lý...' : 'Đăng ký'}
+            </FormButton>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-3 text-white bg-blue-600 rounded-lg transition duration-200 ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"}`}
-          >
-            {loading ? "Processing..." : "Register"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="w-full py-3 text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50"
-          >
-            Back to Home
-          </button>
-        </form>
+            <div className="text-center">
+              <p className="text-cyan-200/80 text-sm">
+                Đã có tài khoản?{' '}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => navigate('/login')}
+                  className="text-cyan-400 hover:text-cyan-300 font-medium transition"
+                >
+                  Đăng nhập ngay
+                </motion.button>
+              </p>
+            </div>
+          </form>
+        </FormCard>
       </div>
-    </div>
+    </AppShell>
   );
 }

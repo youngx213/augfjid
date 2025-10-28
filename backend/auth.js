@@ -6,11 +6,15 @@ import { config } from "./config.js";
 
 const JWT_SECRET = config.jwtSecret;
 
-// Kiểm tra key hợp lệ
+// Kiểm tra key hợp lệ và chưa được sử dụng
 export async function isValidKey(key) {
   if (!key) return false;
   const role = await redis.hget("valid_keys", key);
-  return role !== null;
+  if (role === null) return false;
+  
+  // Kiểm tra key đã được sử dụng chưa
+  const used = await redis.hget("used_keys", key);
+  return used === null; // Chỉ hợp lệ nếu chưa được sử dụng
 }
 
 // Thêm key mới (admin call)
@@ -24,13 +28,46 @@ export async function addKey(key, role = "game") {
 export async function getRoleByKey(key) {
   if (!key) return null;
   const role = await redis.hget("valid_keys", key);
-  return role; // null nếu không có
+  if (role === null) return null;
+  
+  // Kiểm tra key đã được sử dụng chưa
+  const used = await redis.hget("used_keys", key);
+  if (used !== null) return null; // Key đã được sử dụng
+  
+  return role;
 }
 
 export async function removeKey(key) {
   if (!key) throw new Error("Key required");
   const removed = await redis.hdel("valid_keys", key);
+  // Cũng xóa khỏi used_keys nếu có
+  await redis.hdel("used_keys", key);
   return removed > 0;
+}
+
+// Lấy thông tin key đã sử dụng
+export async function getUsedKeyInfo(key) {
+  if (!key) return null;
+  const usedInfo = await redis.hget("used_keys", key);
+  if (!usedInfo) return null;
+  try {
+    return JSON.parse(usedInfo);
+  } catch {
+    return null;
+  }
+}
+
+// Lấy danh sách tất cả key đã sử dụng
+export async function getAllUsedKeys() {
+  const keys = await redis.hkeys("used_keys");
+  const result = [];
+  for (const key of keys) {
+    const info = await getUsedKeyInfo(key);
+    if (info) {
+      result.push({ key, ...info });
+    }
+  }
+  return result;
 }
 
 export function generateKey(length = 16) {
@@ -50,12 +87,16 @@ export async function register(username, password, key) {
     return { ok: false, error: "username và password là bắt buộc" };
   }
 
-  // Determine role strictly by key; default to "bot" if no key/invalid
-  let role = null;
-  if (key) {
-    role = await getRoleByKey(key);
+  // Bắt buộc phải có key hợp lệ
+  if (!key) {
+    return { ok: false, error: "Key đăng ký là bắt buộc" };
   }
-  if (!role) role = "bot";
+
+  // Kiểm tra key hợp lệ và chưa được sử dụng
+  const role = await getRoleByKey(key);
+  if (!role) {
+    return { ok: false, error: "Key không hợp lệ hoặc đã được sử dụng" };
+  }
 
   const exists = await redis.hget("users", username);
   if (exists) return { ok: false, error: "Tài khoản đã tồn tại" };
@@ -72,6 +113,14 @@ export async function register(username, password, key) {
   };
 
   await redis.hset("users", username, JSON.stringify(userObj));
+  
+  // Đánh dấu key đã được sử dụng
+  await redis.hset("used_keys", key, JSON.stringify({
+    username,
+    userId,
+    usedAt: Date.now(),
+    role
+  }));
 
   // Thêm dữ liệu mẫu cho user role=game (chuẩn hoá schema presets)
   if (role === "game") {

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { api } from './lib/apiClient.js';
 import { useAuthStore } from './store/useAuthStore.js';
-import toast from 'react-hot-toast';
+import { useToast } from './components/Toast.jsx';
+import { FormCard, FormField, FormButton, FormError, FormIcons } from './components/FormComponents.jsx';
+import AppShell from './components/AppShell.jsx';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -11,85 +14,110 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setToken = useAuthStore(s => s.setToken);
+  const { success, error: showError } = useToast();
 
   async function handleLogin(e) {
     e.preventDefault();
+    setError("");
     setLoading(true);
+    
     try {
       const { data } = await api.post('/api/auth/login', { username, password });
       if (data.ok) {
         setToken(data.token);
         onLogin?.(data);
-        toast.success('Logged in successfully');
-        if (data.role === 'admin') navigate('/admin');
-        else if (data.role === 'game') navigate('/minecraft');
-        else navigate('/dashboard');
+        success('Đăng nhập thành công', 'Chào mừng bạn quay trở lại!');
+        
+        // Navigate based on role
+        setTimeout(() => {
+          if (data.role === 'admin') navigate('/admin');
+          else if (data.role === 'game') navigate('/minecraft');
+          else navigate('/dashboard');
+        }, 1000);
       } else {
-        setError(data.error || 'Login failed');
-        toast.error(data.error || 'Login failed');
+        const errorMsg = data.error || 'Đăng nhập thất bại';
+        setError(errorMsg);
+        showError('Lỗi đăng nhập', errorMsg);
       }
     } catch (err) {
-      setError(err.message || "Connection error");
-      toast.error(err.message || 'Connection error');
+      const errorMsg = err.response?.data?.error || err.message || "Lỗi kết nối";
+      setError(errorMsg);
+      showError('Lỗi kết nối', errorMsg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Login</h2>
-        
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-            <input
+    <AppShell
+      title="Đăng nhập"
+      subtitle="Chào mừng bạn quay trở lại"
+      actions={
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/')}
+          className="px-4 py-2 text-cyan-200 hover:text-white transition"
+        >
+          ← Về trang chủ
+        </motion.button>
+      }
+    >
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <FormCard 
+          title="Đăng nhập" 
+          subtitle="Nhập thông tin để truy cập tài khoản của bạn"
+          className="w-full max-w-md"
+        >
+          <form onSubmit={handleLogin} className="space-y-6">
+            <FormField
+              label="Tên đăng nhập"
               type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Nhập tên đăng nhập"
               required
+              icon={FormIcons.user}
+              error={error && error.includes('username') ? error : null}
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <input
+            <FormField
+              label="Mật khẩu"
               type="password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nhập mật khẩu"
               required
+              icon={FormIcons.lock}
+              error={error && error.includes('password') ? error : null}
             />
-          </div>
 
-          
+            <FormError error={error} />
 
-          {error && (
-            <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
-              {error}
+            <FormButton
+              type="submit"
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+            >
+              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            </FormButton>
+
+            <div className="text-center">
+              <p className="text-cyan-200/80 text-sm">
+                Chưa có tài khoản?{' '}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => navigate('/register')}
+                  className="text-cyan-400 hover:text-cyan-300 font-medium transition"
+                >
+                  Đăng ký ngay
+                </motion.button>
+              </p>
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-3 text-white bg-blue-600 rounded-lg transition duration-200 
-              ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700 transform hover:scale-105'}`}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="w-full py-3 text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50 transition duration-200"
-          >
-            Back to Home
-          </button>
-        </form>
+          </form>
+        </FormCard>
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -1,6 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import logo from "../assets/logo.png";
+import { useTheme } from "./ThemeToggle.jsx";
+import { MobileMenu, MobileMenuButton } from "./MobileMenu.jsx";
 
 function ParticleBackground() {
   const canvasRef = React.useRef(null);
@@ -51,8 +53,23 @@ function ParticleBackground() {
 }
 
 export default function AppShell({ title, subtitle, actions, children }) {
+  const [theme] = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#0b0b15] text-white relative overflow-hidden">
+    <div className={`min-h-screen text-white relative overflow-hidden ${
+      theme === "light" 
+        ? "bg-gray-50 text-gray-900" 
+        : "bg-[#0b0b15] text-white"
+    }`}>
       <motion.div
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-900/60 via-[#0b0b15] to-black"
         animate={{
@@ -65,18 +82,42 @@ export default function AppShell({ title, subtitle, actions, children }) {
       <div className="absolute w-80 h-80 bg-cyan-500/15 blur-[140px] rounded-full -top-24 -left-24" />
       <div className="absolute w-80 h-80 bg-fuchsia-500/15 blur-[140px] rounded-full bottom-10 right-10" />
 
-      <header className="relative z-10 border-b border-cyan-500/20 bg-white/5 backdrop-blur-md">
+      <header className={`relative z-10 border-b backdrop-blur-md ${
+        theme === "light" 
+          ? "border-gray-200 bg-white/80" 
+          : "border-cyan-500/20 bg-white/5"
+      }`}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logo} alt="EricSoftware" className="w-10 h-10 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]" />
             <div>
-              <h1 className="font-extrabold text-lg text-white/95">{title}</h1>
-              {subtitle && <p className="text-cyan-200/80 text-sm">{subtitle}</p>}
+              <h1 className={`font-extrabold text-lg ${
+                theme === "light" ? "text-gray-900" : "text-white/95"
+              }`}>{title}</h1>
+              {subtitle && (
+                <p className={`text-sm ${
+                  theme === "light" ? "text-gray-600" : "text-cyan-200/80"
+                }`}>{subtitle}</p>
+              )}
             </div>
           </div>
-          {actions && <div className="flex items-center gap-3">{actions}</div>}
+          
+          {isMobile ? (
+            <div className="flex items-center gap-2">
+              {actions && (
+                <MobileMenuButton onClick={() => setMobileMenuOpen(true)} />
+              )}
+            </div>
+          ) : (
+            actions && <div className="flex items-center gap-3">{actions}</div>
+          )}
         </div>
       </header>
+
+      {/* Mobile Menu */}
+      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+        {actions}
+      </MobileMenu>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-10 space-y-10">
         {children}
@@ -84,4 +125,5 @@ export default function AppShell({ title, subtitle, actions, children }) {
     </div>
   );
 }
+
 

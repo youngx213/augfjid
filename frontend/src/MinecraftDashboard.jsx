@@ -863,324 +863,439 @@ export default function MinecraftDashboard({ onLogout }) {
   return (
     <ErrorBoundary>
       <AppShell
-        title="TikTok Stream Dashboard"
-        subtitle={`User: ${username} | Minecraft Integration`}
+        title="🎮 Minecraft TikTok Dashboard"
+        subtitle={`Welcome ${username} | Stream Integration`}
         actions={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button 
+            onClick={() => navigate('/i18n')} 
+            className="px-3 py-2 bg-purple-500/90 hover:bg-purple-500 text-white rounded-lg transition text-sm"
+          >
+            🌐 i18n
+          </button>
           <TokenStatus />
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
-            TikTok Dashboard
+            📱 TikTok Dashboard
           </button>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
           >
-            Logout
+            🚪 Logout
           </button>
         </div>
       }
     >
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
-          <div className="text-yellow-300 text-2xl font-bold">{stats.coins}</div>
-          <div className="text-cyan-200/80 text-sm">Coins</div>
-        </div>
-        <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
-          <div className="text-green-300 text-2xl font-bold">{stats.viewers}</div>
-          <div className="text-cyan-200/80 text-sm">Viewers</div>
-        </div>
-        <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
-          <div className="text-purple-300 text-2xl font-bold">{stats.winGoal}</div>
-          <div className="text-cyan-200/80 text-sm">Win Goal</div>
-        </div>
-        <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
-          <div className="text-orange-300 text-2xl font-bold">{stats.timer}s</div>
-          <div className="text-cyan-200/80 text-sm">Timer</div>
-        </div>
-      </div>
-
-      {/* TikTok Account Management */}
-      <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10 mb-6">
-        <h2 className="text-xl font-bold text-white mb-4">TikTok Account Management</h2>
-        
-        {/* Plugin Key Section */}
-        <div className="bg-purple-500/20 border border-purple-500/50 p-4 rounded-lg mb-4">
-          <h3 className="text-purple-200 font-semibold mb-3">🔑 Minecraft Plugin Key</h3>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={pluginKey}
-                readOnly
-                placeholder="Generate a plugin key to use in Minecraft"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm font-mono"
-              />
+      {/* Stats Overview Section */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          📊 Live Statistics
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 p-4 sm:p-6 rounded-2xl shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20 transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-500/20 rounded-full flex items-center justify-center">
+                <span className="text-yellow-300 text-lg">🪙</span>
+              </div>
+              <div>
+                <div className="text-yellow-300 text-xl sm:text-2xl font-bold">{stats.coins}</div>
+                <div className="text-yellow-200/80 text-xs sm:text-sm">Coins Earned</div>
+              </div>
             </div>
-            <button
-              onClick={generatePluginKey}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-            >
-              Generate
-            </button>
-            <button
-              onClick={copyPluginKey}
-              disabled={!pluginKey}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Copy
-            </button>
-          </div>
-          <div className="text-purple-200/80 text-xs mt-2">
-            ⚠️ This key is valid for 24 hours. Use this key in your Minecraft plugin configuration.
-          </div>
-        </div>
-
-        {/* Function Editor Section */}
-        <div className="bg-blue-500/20 border border-blue-500/50 p-4 rounded-lg mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-blue-200 font-semibold">⚡ Function Editor</h3>
-            <button
-              onClick={() => handleOpenFunctionEditor()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-            >
-              + Add Function
-            </button>
           </div>
           
-          {functions.length > 0 ? (
-            <div className="space-y-2">
-              {functions.map((func) => (
-                <div key={func.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-                      <span className="text-white text-sm">⚡</span>
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold text-sm">{func.name}</div>
-                      <div className="text-gray-400 text-xs">
-                        {func.commands?.length || 0} commands • {func.repetition}x repetition
+          <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 p-4 sm:p-6 rounded-2xl shadow-lg shadow-green-500/10 hover:shadow-green-500/20 transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                <span className="text-green-300 text-lg">👥</span>
+              </div>
+              <div>
+                <div className="text-green-300 text-xl sm:text-2xl font-bold">{stats.viewers}</div>
+                <div className="text-green-200/80 text-xs sm:text-sm">Live Viewers</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 p-4 sm:p-6 rounded-2xl shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                <span className="text-purple-300 text-lg">🎯</span>
+              </div>
+              <div>
+                <div className="text-purple-300 text-xl sm:text-2xl font-bold">{stats.winGoal}</div>
+                <div className="text-purple-200/80 text-xs sm:text-sm">Win Goal</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30 p-4 sm:p-6 rounded-2xl shadow-lg shadow-orange-500/10 hover:shadow-orange-500/20 transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+                <span className="text-orange-300 text-lg">⏱️</span>
+              </div>
+              <div>
+                <div className="text-orange-300 text-xl sm:text-2xl font-bold">{stats.timer}s</div>
+                <div className="text-orange-200/80 text-xs sm:text-sm">Session Timer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Minecraft Integration Section */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          🔗 Minecraft Integration
+        </h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Plugin Key Card */}
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 p-6 rounded-2xl shadow-lg shadow-purple-500/10">
+            <h3 className="text-purple-200 font-semibold mb-4 flex items-center gap-2">
+              🔑 Plugin Authentication Key
+            </h3>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={pluginKey}
+                    readOnly
+                    placeholder="Generate a plugin key to use in Minecraft"
+                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600/50 rounded-lg text-white text-sm font-mono focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={generatePluginKey}
+                    className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                  >
+                    🔄 Generate
+                  </button>
+                  <button
+                    onClick={copyPluginKey}
+                    disabled={!pluginKey}
+                    className="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-500/30 p-3 rounded-lg">
+                <div className="text-purple-200/80 text-sm flex items-start gap-2">
+                  <span className="text-yellow-400">⚠️</span>
+                  <span>This key is valid for 24 hours. Use this key in your Minecraft plugin configuration.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Function Editor Card */}
+          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 p-6 rounded-2xl shadow-lg shadow-blue-500/10">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-blue-200 font-semibold flex items-center gap-2">
+                ⚡ Function Editor
+              </h3>
+              <button
+                onClick={() => handleOpenFunctionEditor()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                ➕ Add Function
+              </button>
+            </div>
+            
+            {functions.length > 0 ? (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {functions.map((func) => (
+                  <div key={func.id} className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center">
+                        <span className="text-blue-300 text-lg">⚡</span>
+                      </div>
+                      <div>
+                        <div className="text-white font-semibold">{func.name}</div>
+                        <div className="text-gray-400 text-sm">
+                          {func.commands?.length || 0} commands • {func.repetition}x repetition
+                        </div>
                       </div>
                     </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenFunctionEditor(func)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFunction(func.id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenFunctionEditor(func)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFunction(func.id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 text-gray-400">
-              <div className="text-2xl mb-2">⚡</div>
-              <div className="text-sm">No functions created yet</div>
-              <div className="text-xs">Create custom functions with commands and sounds</div>
-            </div>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 py-8">
+                <div className="text-4xl mb-2">⚡</div>
+                <p>No functions created yet.</p>
+                <p className="text-sm">Click "Add Function" to create your first function.</p>
+              </div>
+            )}
+          </div>
         </div>
+      </section>
 
+      {/* TikTok Account Management Section */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          📱 TikTok Account Management
+        </h2>
+        
         {/* Selected Account Display */}
         {selectedTiktokAccount && (
-          <div className="bg-emerald-500/20 border border-emerald-500/50 p-4 rounded-lg mb-4">
-            <h3 className="text-emerald-200 font-semibold mb-2">Currently Selected Account</h3>
+          <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 p-6 rounded-2xl shadow-lg shadow-emerald-500/10 mb-6">
+            <h3 className="text-emerald-200 font-semibold mb-4 flex items-center gap-2">
+              ✅ Currently Selected Account
+            </h3>
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-white font-bold">@{selectedTiktokAccount.username}</div>
-                <div className="text-emerald-200/80 text-sm">{selectedTiktokAccount.settings?.description || 'No description'}</div>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <span className="text-emerald-300 text-xl">📱</span>
+                </div>
+                <div>
+                  <div className="text-white font-bold text-lg">@{selectedTiktokAccount.username}</div>
+                  <div className="text-emerald-200/80 text-sm">{selectedTiktokAccount.settings?.description || 'No description'}</div>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedTiktokAccount(null)}
-                className="px-3 py-1 bg-red-500/80 text-white rounded text-sm hover:bg-red-500 transition"
+                className="px-4 py-2 bg-red-500/80 text-white rounded-lg text-sm hover:bg-red-500 transition-colors font-medium"
               >
-                Deselect
+                ❌ Deselect
               </button>
             </div>
           </div>
         )}
         
-        <div className="bg-black/30 border border-white/10 p-4 rounded-lg mb-4">
-          <h3 className="text-white font-semibold mb-3">Add New TikTok Account</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              value={newTiktokAccount.username}
-              onChange={(e) => setNewTiktokAccount({ ...newTiktokAccount, username: e.target.value })}
-              placeholder="TikTok Username (e.g., @username)"
-              className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-200"
-            />
-            <input
-              value={newTiktokAccount.description}
-              onChange={(e) => setNewTiktokAccount({ ...newTiktokAccount, description: e.target.value })}
-              placeholder="Description (optional)"
-              className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-200"
-            />
+        {/* Add New Account Card */}
+        <div className="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border border-gray-700/50 p-6 rounded-2xl shadow-lg shadow-gray-500/10 mb-6">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            ➕ Add New TikTok Account
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-300 text-sm mb-2">TikTok Username</label>
+              <input
+                value={newTiktokAccount.username}
+                onChange={(e) => setNewTiktokAccount({ ...newTiktokAccount, username: e.target.value })}
+                placeholder="e.g., @username"
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 text-sm mb-2">Description (Optional)</label>
+              <input
+                value={newTiktokAccount.description}
+                onChange={(e) => setNewTiktokAccount({ ...newTiktokAccount, description: e.target.value })}
+                placeholder="Account description"
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              />
+            </div>
           </div>
           <button
             onClick={addTiktokAccount}
-            className="mt-3 px-4 py-2 bg-emerald-500 text-black font-semibold rounded-lg hover:bg-emerald-400 transition"
+            className="mt-4 px-6 py-3 bg-emerald-500 text-black font-semibold rounded-lg hover:bg-emerald-400 transition-colors flex items-center gap-2"
           >
-            Add TikTok Account
+            ➕ Add TikTok Account
           </button>
         </div>
 
-        <div className="space-y-3 max-h-48 overflow-y-auto">
+        {/* Accounts List */}
+        <div className="space-y-4 max-h-96 overflow-y-auto">
           {tiktokAccounts.map((account) => (
-            <div key={account.id} className="bg-black/30 border border-white/10 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
+            <div key={account.id} className="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border border-gray-700/50 p-6 rounded-2xl shadow-lg shadow-gray-500/10 hover:shadow-gray-500/20 transition-all">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
-                  <div className="text-white font-semibold">@{account.username}</div>
-                  <div className="text-cyan-200/80 text-sm space-y-1">
-                    {account.settings?.description && <div>Description: {account.settings.description}</div>}
-                    <div>Status: {account.status || "inactive"}</div>
-                    <div>Created: {new Date(account.createdAt).toLocaleDateString()}</div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-emerald-300 text-lg">📱</span>
+                    </div>
+                    <div>
+                      <div className="text-white font-semibold text-lg">@{account.username}</div>
+                      <div className="text-gray-400 text-sm">
+                        Status: <span className={`font-medium ${account.status === 'active' ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {account.status || "inactive"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-gray-300 text-sm space-y-1 ml-13">
+                    {account.settings?.description && (
+                      <div>📝 {account.settings.description}</div>
+                    )}
+                    <div>📅 Created: {new Date(account.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => selectTiktokAccount(account)}
-                    className={`px-3 py-1 rounded text-sm transition ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       selectedTiktokAccount?.id === account.id
                         ? 'bg-blue-600 text-white'
                         : 'bg-blue-500/80 text-white hover:bg-blue-600'
                     }`}
                   >
-                    {selectedTiktokAccount?.id === account.id ? 'Selected' : 'Select'}
+                    {selectedTiktokAccount?.id === account.id ? '✅ Selected' : '🎯 Select'}
                   </button>
                   <button
                     onClick={() => startTiktokListener(account.id)}
-                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors font-medium"
                   >
-                    Start
+                    ▶️ Start
                   </button>
                   <button
                     onClick={() => stopTiktokListener(account.id)}
-                    className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm hover:bg-yellow-700 transition-colors font-medium"
                   >
-                    Stop
+                    ⏹️ Stop
                   </button>
                   <button
                     onClick={() => deleteTiktokAccount(account.id)}
-                    className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors font-medium"
                   >
-                    Delete
+                    🗑️ Delete
                   </button>
                 </div>
               </div>
             </div>
           ))}
           {tiktokAccounts.length === 0 && (
-            <div className="text-center text-cyan-200/70 py-4">No TikTok accounts added yet.</div>
+            <div className="text-center text-gray-400 py-12">
+              <div className="text-6xl mb-4">📱</div>
+              <p className="text-lg font-medium">No TikTok accounts added yet</p>
+              <p className="text-sm">Add your first TikTok account to get started</p>
+            </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/5 border border-cyan-500/20 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
-          <h2 className="text-xl font-bold text-white mb-4">TikTok Gift Presets</h2>
+      {/* Gift Presets Section */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          🎁 TikTok Gift Presets
+        </h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gift Presets Card */}
+          <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 p-6 rounded-2xl shadow-lg shadow-cyan-500/10">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              🎁 Gift Presets
+            </h3>
 
-          <div className="bg-black/30 border border-white/10 p-4 rounded-lg mb-4">
-            <h3 className="text-white font-semibold mb-3">Add New Preset</h3>
-            <div className="space-y-3">
-              {/* Gift Selection */}
-              <div>
-                <label className="text-white text-sm mb-1 block">Select TikTok Gift</label>
-                <button
-                  onClick={() => setShowGiftSelector(true)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-left flex items-center justify-between"
-                >
-                  <span>
-                    {selectedGift ? (
-                      <div className="flex items-center gap-2">
-                        <img 
-                          src={selectedGift.imageUrl} 
-                          alt={selectedGift.name}
-                          className="w-6 h-6 object-contain"
-                        />
-                        <span>{selectedGift.name}</span>
-                      </div>
-                    ) : (
-                      "Click to select gift"
-                    )}
-                  </span>
-                  <span>▼</span>
-                </button>
-              </div>
-
-              {/* Coins per unit */}
-              <div>
-                <label className="text-white text-sm mb-1 block">Coins per unit</label>
-                <input
-                  type="number"
-                  value={newPreset.coinsPerUnit}
-                  onChange={(e) => setNewPreset({ ...newPreset, coinsPerUnit: parseInt(e.target.value, 10) || 1 })}
-                  placeholder="1"
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-200"
-                />
-              </div>
-
-              {/* Sound Selection */}
-              <div>
-                <label className="text-white text-sm mb-1 block">Select Sound</label>
-                <div className="flex gap-2">
+            {/* Add New Preset Card */}
+            <div className="bg-gray-800/30 border border-gray-700/50 p-4 rounded-lg mb-4">
+              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">➕ Add New Preset</h4>
+              <div className="space-y-4">
+                {/* Gift Selection */}
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Select TikTok Gift</label>
                   <button
-                    onClick={() => setShowSoundSelector(true)}
-                    className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-left flex items-center justify-between"
+                    onClick={() => setShowGiftSelector(true)}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-left flex items-center justify-between hover:border-cyan-500/50 transition-all"
                   >
                     <span>
-                      {selectedSound ? selectedSound.name : "Choose from library"}
+                      {selectedGift ? (
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={selectedGift.imageUrl} 
+                            alt={selectedGift.name}
+                            className="w-8 h-8 object-contain"
+                          />
+                          <span className="font-medium">{selectedGift.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Click to select gift</span>
+                      )}
                     </span>
-                    <span>▼</span>
+                    <span className="text-gray-400">▼</span>
                   </button>
+                </div>
+
+                {/* Coins per unit */}
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Coins per unit</label>
                   <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleSoundUpload}
-                    className="hidden"
-                    id="sound-upload"
+                    type="number"
+                    value={newPreset.coinsPerUnit}
+                    onChange={(e) => setNewPreset({ ...newPreset, coinsPerUnit: parseInt(e.target.value, 10) || 1 })}
+                    placeholder="Enter coins per gift unit"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    min="1"
                   />
-                  <label
-                    htmlFor="sound-upload"
-                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
-                  >
-                    Upload
-                  </label>
+                </div>
+
+                {/* Sound Selection */}
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Select Sound</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowSoundSelector(true)}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-left flex items-center justify-between hover:border-cyan-500/50 transition-all"
+                    >
+                      <span>
+                        {selectedSound ? (
+                          <span className="font-medium">{selectedSound.name}</span>
+                        ) : (
+                          <span className="text-gray-400">Choose from library</span>
+                        )}
+                      </span>
+                      <span className="text-gray-400">▼</span>
+                    </button>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleSoundUpload}
+                      className="hidden"
+                      id="sound-upload"
+                    />
+                    <label
+                      htmlFor="sound-upload"
+                      className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-medium"
+                    >
+                      📁 Upload
+                    </label>
+                  </div>
+                </div>
+
+                {/* Commands */}
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Minecraft Commands (separated by ;)</label>
+                  <input
+                    value={(newPreset.commands && newPreset.commands.join(";")) || ""}
+                    onChange={(e) => setNewPreset({ ...newPreset, commands: e.target.value.split(";").map((cmd) => cmd.trim()).filter(Boolean) })}
+                    placeholder="/bedrock tnt;/bedrock create 5 5"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  />
                 </div>
               </div>
-
-              {/* Commands */}
-              <div>
-                <label className="text-white text-sm mb-1 block">Minecraft Commands (separated by ;)</label>
-                <input
-                  value={(newPreset.commands && newPreset.commands.join(";")) || ""}
-                  onChange={(e) => setNewPreset({ ...newPreset, commands: e.target.value.split(";").map((cmd) => cmd.trim()).filter(Boolean) })}
-                  placeholder="/bedrock tnt;/bedrock create 5 5"
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-200"
-                />
-              </div>
+              <button
+                onClick={addPreset}
+                className="mt-4 px-6 py-3 bg-emerald-500 text-black font-semibold rounded-lg hover:bg-emerald-400 transition-colors flex items-center gap-2"
+              >
+                ➕ Add Preset
+              </button>
             </div>
-            <button
-              onClick={addPreset}
-              className="mt-3 px-4 py-2 bg-emerald-500 text-black font-semibold rounded-lg hover:bg-emerald-400 transition"
-            >
-              Add Preset
-            </button>
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {presets.map((preset) => (
-              <div key={preset.id} className="bg-black/30 border border-white/10 p-4 rounded-lg">
+            {/* Presets List */}
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {presets.map((preset) => (
+                <div key={preset.id} className="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border border-gray-700/50 p-4 rounded-lg hover:border-cyan-500/50 transition-all">
                 {editingPreset?.id === preset.id ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
@@ -1439,9 +1554,11 @@ export default function MinecraftDashboard({ onLogout }) {
             </ul>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="bg-white/5 border border-cyan-500/20 rounded-2xl p-6 shadow-lg shadow-cyan-500/10">
+      {/* Integration Info Section */}
+      <section className="mb-8">
+        <div className="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border border-gray-700/50 rounded-2xl p-6 shadow-lg shadow-gray-500/10">
         <h2 className="text-xl font-bold text-white mb-4">TikTok Draw Bot Integration</h2>
         <div className="text-cyan-200 space-y-2">
           <p><strong>System:</strong> TikTok Draw Bot với Minecraft Plugin Integration</p>
@@ -1450,7 +1567,8 @@ export default function MinecraftDashboard({ onLogout }) {
           <p><strong>Socket.IO:</strong> Connect to <code className="bg-black/30 px-2 py-1 rounded">{API_URL}</code> và join room <code className="bg-black/30 px-2 py-1 rounded">plugin:{username}</code></p>
           <p><strong>Events:</strong> Nghe event <code className="bg-black/30 px-2 py-1 rounded">plugin:trigger</code> cho Minecraft commands</p>
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Gift Selector Modal */}
       {showGiftSelector && (

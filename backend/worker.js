@@ -1,5 +1,6 @@
 // queue-worker.js
 import { redis } from "./redis.js";
+import { analyticsService } from "./services/analyticsService.js";
 
 /**
  * Ghi log để Dashboard thấy realtime
@@ -15,17 +16,49 @@ async function writeLog(accountId, level, text) {
  * Xử lý 1 job trong hàng đợi
  */
 async function processJob(accountId, job) {
+  const startTime = Date.now();
   await writeLog(accountId, "queue", `⏳ Bắt đầu vẽ ảnh cho @${job.user}`);
 
-  // TODO: chỗ này bạn tích hợp lệnh điều khiển tay robot
-  // Ví dụ: gửi lệnh qua serial, socket, hoặc API sang máy robot
-  await new Promise(r => setTimeout(r, 5000)); // giả lập robot vẽ mất 5s
+  try {
+    // TODO: chỗ này bạn tích hợp lệnh điều khiển tay robot
+    // Ví dụ: gửi lệnh qua serial, socket, hoặc API sang máy robot
+    await new Promise(r => setTimeout(r, 5000)); // giả lập robot vẽ mất 5s
 
-  await writeLog(accountId, "queue", `✅ Đã vẽ xong ảnh cho @${job.user}`);
-  
-  // cập nhật trạng thái job
-  job.status = "done";
-  await redis.hset(`job:${accountId}:${job.jobId}`, job);
+    const executionTime = Date.now() - startTime;
+    await writeLog(accountId, "queue", `✅ Đã vẽ xong ảnh cho @${job.user}`);
+    
+    // Ghi nhận command thành công vào analytics
+    analyticsService.recordCommand(accountId, {
+      command: `draw_image_${job.jobId}`,
+      success: true,
+      executionTime: executionTime,
+      timestamp: Date.now()
+    });
+    
+    // cập nhật trạng thái job
+    job.status = "done";
+    await redis.hset(`job:${accountId}:${job.jobId}`, job);
+    
+  } catch (error) {
+    const executionTime = Date.now() - startTime;
+    await writeLog(accountId, "error", `❌ Lỗi khi vẽ ảnh cho @${job.user}: ${error.message}`);
+    
+    // Ghi nhận command thất bại vào analytics
+    analyticsService.recordCommand(accountId, {
+      command: `draw_image_${job.jobId}`,
+      success: false,
+      executionTime: executionTime,
+      errorType: error.name || 'unknown',
+      timestamp: Date.now()
+    });
+    
+    // cập nhật trạng thái job
+    job.status = "failed";
+    job.error = error.message;
+    await redis.hset(`job:${accountId}:${job.jobId}`, job);
+    
+    throw error; // Re-throw để worker manager xử lý
+  }
 }
 
 /**

@@ -5,6 +5,11 @@ import { api, getApiUrl } from "./lib/apiClient.js";
 import { decodeJwtPayload } from "./lib/tokenUtils.js";
 import TokenStatus from "./components/TokenStatus.jsx";
 import AppShell from "./components/AppShell.jsx";
+import LoadingSpinner, { LoadingButton, LoadingCard } from "./components/LoadingSpinner.jsx";
+import { useToast } from "./components/Toast.jsx";
+import { RealTimeLineChart, RealTimeBarChart, useRealTimeData } from "./components/Charts.jsx";
+import { useTheme } from "./components/ThemeToggle.jsx";
+import ThemeToggle from "./components/ThemeToggle.jsx";
 
 const API_URL = getApiUrl();
 
@@ -16,10 +21,22 @@ export default function Dashboard({ onLogout }) {
   const [logs, setLogs] = useState([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [pollInterval, setPollInterval] = useState(3000);
+  const [loading, setLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [startingAccount, setStartingAccount] = useState(null);
+  const [stoppingAccount, setStoppingAccount] = useState(null);
+  
   const pollRef = useRef(null);
   const socketRef = useRef(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+  const { success, error, info } = useToast();
+  const [theme, setTheme] = useTheme();
+  
+  // Real-time data for charts
+  const queueData = useRealTimeData({ label: "Queue Size", labels: [], values: [] });
+  const giftData = useRealTimeData({ label: "Gifts Received", labels: [], values: [] });
 
   useEffect(() => {
     if (!token) {
@@ -36,9 +53,22 @@ export default function Dashboard({ onLogout }) {
       navigate("/minecraft");
       return;
     }
-    fetchAccounts();
-    // connect socket for logs
-    connectSocket();
+    
+    const initializeDashboard = async () => {
+      setLoading(true);
+      try {
+        await fetchAccounts();
+        connectSocket();
+        success("Dashboard", "Đã kết nối thành công!");
+      } catch (err) {
+        error("Lỗi khởi tạo", "Không thể tải dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initializeDashboard();
+    
     return () => {
       disconnectSocket();
       stopPolling();
@@ -84,9 +114,18 @@ export default function Dashboard({ onLogout }) {
       try {
         api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
         const { data } = await api.get(`/api/accounts/${activeAccount}/queue`);
-        setQueue(Array.isArray(data) ? data : []);
+        const newQueue = Array.isArray(data) ? data : [];
+        setQueue(newQueue);
+        
+        // Update real-time chart data
+        queueData.addDataPoint(newQueue.length);
+        
         const { data: giftedData } = await api.get(`/api/accounts/${activeAccount}/gifted`);
-        setGifted(Array.isArray(giftedData) ? giftedData : []);
+        const newGifted = Array.isArray(giftedData) ? giftedData : [];
+        setGifted(newGifted);
+        
+        // Update gift chart data
+        giftData.addDataPoint(newGifted.length);
       } catch (err) {
         // ignore polling errors
       }
@@ -101,6 +140,7 @@ export default function Dashboard({ onLogout }) {
   }
 
   async function fetchAccounts() {
+    setAccountsLoading(true);
     try {
       api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
       const { data } = await api.get(`/api/accounts`);
@@ -114,37 +154,57 @@ export default function Dashboard({ onLogout }) {
       }
     } catch (err) {
       console.error(err);
+      error("Lỗi tải danh sách", "Không thể tải danh sách tài khoản");
+    } finally {
+      setAccountsLoading(false);
     }
   }
 
   async function createAccount() {
     if (!newAccountName.trim()) return;
+    setCreatingAccount(true);
     try {
       api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
       const { data } = await api.post(`/api/accounts`, { username: newAccountName.trim() });
       if (data?.ok) {
         setNewAccountName("");
-        fetchAccounts();
+        await fetchAccounts();
+        success("Thành công", `Đã tạo tài khoản ${newAccountName.trim()}`);
       }
     } catch (err) {
       console.error(err);
+      error("Lỗi tạo tài khoản", "Không thể tạo tài khoản mới");
+    } finally {
+      setCreatingAccount(false);
     }
   }
 
   async function startAccount(id) {
+    setStartingAccount(id);
     try {
       api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
       await api.post(`/api/accounts/${id}/start`);
-      fetchAccounts();
-    } catch {}
+      await fetchAccounts();
+      success("Thành công", "Đã khởi động tài khoản");
+    } catch (err) {
+      error("Lỗi khởi động", "Không thể khởi động tài khoản");
+    } finally {
+      setStartingAccount(null);
+    }
   }
 
   async function stopAccount(id) {
+    setStoppingAccount(id);
     try {
       api.defaults.headers.Authorization = token ? `Bearer ${token}` : undefined;
       await api.post(`/api/accounts/${id}/stop`);
-      fetchAccounts();
-    } catch {}
+      await fetchAccounts();
+      success("Thành công", "Đã dừng tài khoản");
+    } catch (err) {
+      error("Lỗi dừng", "Không thể dừng tài khoản");
+    } finally {
+      setStoppingAccount(null);
+    }
   }
 
   function handleLogout() {
@@ -153,12 +213,38 @@ export default function Dashboard({ onLogout }) {
     navigate("/login");
   }
 
+  if (loading) {
+    return (
+      <AppShell
+        title="TikTok Bot Dashboard"
+        subtitle="Đang tải..."
+        actions={
+          <>
+            <TokenStatus />
+            <button onClick={handleLogout} className="px-3 py-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg transition">Đăng xuất</button>
+          </>
+        }
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner size="xl" text="Đang khởi tạo dashboard..." />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
       title="TikTok Bot Dashboard"
       subtitle="Quản lý listener, hàng đợi và log realtime"
       actions={
         <>
+          <button 
+            onClick={() => navigate('/i18n')} 
+            className="px-3 py-2 bg-purple-500/90 hover:bg-purple-500 text-white rounded-lg transition"
+          >
+            🌐 i18n
+          </button>
+          <ThemeToggle theme={theme} onThemeChange={setTheme} />
           <TokenStatus />
           <button onClick={handleLogout} className="px-3 py-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg transition">Đăng xuất</button>
         </>
@@ -172,9 +258,27 @@ export default function Dashboard({ onLogout }) {
               <p className="text-cyan-200/70 text-sm">Theo dõi trạng thái và điều khiển worker</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Username mới" className="px-4 py-2 bg-black/30 border border-cyan-500/30 rounded-lg text-white placeholder-cyan-200/60 focus:outline-none focus:ring-2 focus:ring-cyan-400" />
-              <button onClick={createAccount} className="px-4 py-2 bg-cyan-500 text-black font-semibold rounded-lg hover:bg-cyan-400 transition">Thêm</button>
-              <button onClick={fetchAccounts} className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition">Làm mới</button>
+              <input 
+                value={newAccountName} 
+                onChange={(e) => setNewAccountName(e.target.value)} 
+                placeholder="Username mới" 
+                className="px-4 py-2 bg-black/30 border border-cyan-500/30 rounded-lg text-white placeholder-cyan-200/60 focus:outline-none focus:ring-2 focus:ring-cyan-400" 
+                disabled={creatingAccount}
+              />
+              <LoadingButton
+                loading={creatingAccount}
+                onClick={createAccount}
+                className="px-4 py-2 bg-cyan-500 text-black font-semibold rounded-lg hover:bg-cyan-400 transition disabled:opacity-50"
+              >
+                Thêm
+              </LoadingButton>
+              <LoadingButton
+                loading={accountsLoading}
+                onClick={fetchAccounts}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition"
+              >
+                Làm mới
+              </LoadingButton>
             </div>
           </div>
 
@@ -207,9 +311,21 @@ export default function Dashboard({ onLogout }) {
                     <td className="px-4 py-3 space-x-2">
                       <button onClick={() => { setActiveAccount(acc.id); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${activeAccount === acc.id ? "bg-indigo-500 text-white" : "bg-white/10 hover:bg-white/20"}`}>Xem</button>
                       {acc.status !== "running" ? (
-                        <button onClick={() => startAccount(acc.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/90 text-black hover:bg-emerald-400 transition">Start</button>
+                        <LoadingButton
+                          loading={startingAccount === acc.id}
+                          onClick={() => startAccount(acc.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/90 text-black hover:bg-emerald-400 transition"
+                        >
+                          Start
+                        </LoadingButton>
                       ) : (
-                        <button onClick={() => stopAccount(acc.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/80 text-white hover:bg-red-500 transition">Stop</button>
+                        <LoadingButton
+                          loading={stoppingAccount === acc.id}
+                          onClick={() => stopAccount(acc.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/80 text-white hover:bg-red-500 transition"
+                        >
+                          Stop
+                        </LoadingButton>
                       )}
                     </td>
                   </tr>
@@ -248,6 +364,20 @@ export default function Dashboard({ onLogout }) {
             </div>
           </div>
         </aside>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <RealTimeLineChart 
+          data={queueData.data} 
+          title="Queue Size Over Time" 
+          height={250}
+        />
+        <RealTimeLineChart 
+          data={giftData.data} 
+          title="Gifts Received Over Time" 
+          height={250}
+        />
       </div>
 
       <section className="bg-white/5 border border-cyan-500/20 rounded-2xl p-6 shadow-lg shadow-cyan-500/10">

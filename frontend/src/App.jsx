@@ -7,13 +7,17 @@ import Dashboard from "./Dashboard.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import MinecraftDashboard from "./MinecraftDashboard.jsx";
 import PurchasePlan from "./components/PurchasePlan.jsx";
+import BusinessDashboard from "./components/BusinessDashboard.jsx";
+import I18nIntegration from "./components/I18nIntegration.jsx";
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from "./store/useAuthStore.js";
 import { getActiveUser } from "./getActiveUser";
+import Toast, { useToast } from "./components/Toast.jsx";
 
 export default function App() {
   const { token, setToken, logout } = useAuthStore((s) => ({ token: s.token, setToken: s.setToken, logout: s.logout }));
   const user = getActiveUser();
+  const { toasts, removeToast } = useToast();
 
   function handleLogin(data) {
     if (data.token) {
@@ -34,11 +38,14 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" />
+      <Toast toasts={toasts} removeToast={removeToast} />
       <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
       <Route path="/register" element={<Register />} />
       <Route path="/pricing" element={<PurchasePlan onOrderCreated={handlePurchaseCreated} />} />
+      <Route path="/business" element={user && user.role === "admin" ? <BusinessDashboard /> : <Navigate to="/login" replace />} />
+      <Route path="/i18n" element={user ? <I18nIntegration /> : <Navigate to="/login" replace />} />
 
       <Route
         path="/admin"

@@ -1,0 +1,118 @@
+# BedrockBox Plugin Configuration
+# Cấu hình plugin Minecraft StreamToEarn
+
+# Plugin Key Configuration
+# IMPORTANT: Set this to your user-specific plugin key from the website
+plugin-key: "453782thien"
+
+# Backend API Configuration
+api:
+  base_url: "http://localhost:3001/api/plugin"
+  timeout: 5000 # milliseconds
+  retry_attempts: 3
+
+# Game Configuration
+game:
+  # Khu vực build tower (có thể thay đổi)
+  build_area:
+    world: "world"
+    min_x: -111
+    min_y: 111
+    min_z: -20
+    max_x: -101
+    max_y: 122
+    max_z: -10
+  
+  # Coin rewards
+  rewards:
+    block_placed: 1
+    tower_completed: 10
+    gift_multiplier: 1.0
+  
+  # Game settings
+  settings:
+    auto_start: false
+    max_game_time: 1800 # 30 minutes in seconds
+    countdown_time: 15 # seconds before tower completion
+    tnt_protection: true
+
+# Gift Mappings
+gifts:
+  # Vietnamese gift names
+  rose: 
+    tnt_power: 2
+    tnt_delay: 0.0
+    coins_per_unit: 1
+  hồng:
+    tnt_power: 2
+    tnt_delay: 0.0
+    coins_per_unit: 1
+  
+  heart:
+    tnt_power: 3
+    tnt_delay: 0.0
+    coins_per_unit: 2
+  tim:
+    tnt_power: 3
+    tnt_delay: 0.0
+    coins_per_unit: 2
+  
+  firework:
+    effect: "fireworks_at_base"
+    coins_per_unit: 3
+  pháo_hoa:
+    effect: "fireworks_at_base"
+    coins_per_unit: 3
+  
+  rain:
+    effect: "rain_tnt"
+    tnt_amount: 20
+    coins_per_unit: 5
+  mưa:
+    effect: "rain_tnt"
+    tnt_amount: 20
+    coins_per_unit: 5
+  
+  zeus:
+    effect: "zeus_tnt"
+    tnt_amount: 40
+    coins_per_unit: 10
+  thần_sấm:
+    effect: "zeus_tnt"
+    tnt_amount: 40
+    coins_per_unit: 10
+  
+  reset:
+    effect: "reset_game"
+    coins_per_unit: 0
+  làm_mới:
+    effect: "reset_game"
+    coins_per_unit: 0
+  
+  build:
+    effect: "build_tower"
+    coins_per_unit: 0
+  xây:
+    effect: "build_tower"
+    coins_per_unit: 0
+
+# Messages
+messages:
+  game_started: "§a§lBedrockBox Game Started!"
+  game_ended: "§c§lGame Ended!"
+  tower_completed: "§6§lTower Completed!"
+  coin_received: "§a+{coins} coins!"
+  bonus_coins: "§6+{coins} bonus coins for tower completion!"
+  leaderboard_title: "§6§l=== LEADERBOARD ==="
+  leaderboard_entry: "§e{player}: §f{coins} coins"
+  game_status_title: "§6§l=== GAME STATUS ==="
+  game_status_active: "§eActive: §f{active}"
+  game_status_streamer: "§eStreamer: §f{streamer}"
+  game_status_timer: "§eTimer: §f{timer}s"
+
+# Debug
+debug:
+  enabled: false
+  log_api_calls: true
+  log_gift_processing: true
+  log_coin_awards: true

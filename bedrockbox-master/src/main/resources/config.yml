@@ -1,0 +1,78 @@
+# BedrockBox Plugin Configuration
+
+# Game Settings
+game:
+  # Default box size (width x width x height)
+  default-size: 9
+  default-height: 9
+  
+  # Timer settings
+  timer:
+    duration: 60  # seconds
+    warning-time: 3  # seconds before end to show warning
+    
+  # Block fill types
+  fill-blocks:
+    slime:
+      material: SLIME_BLOCK
+      color: "&a"  # Green
+    gold:
+      material: GOLD_BLOCK
+      color: "&6"  # Gold
+    diamond:
+      material: DIAMOND_BLOCK
+      color: "&b"  # Aqua
+    default:
+      material: STONE
+      color: "&7"  # Gray
+
+# TNT Settings
+tnt:
+  fuse-ticks: 40  # 2 seconds
+  max-tnt-per-gift: 5
+  explosion-power: 4.0
+
+# Rewards
+rewards:
+  # Coins per block placed
+  block-placement: 1
+  
+  # Bonus coins for completing layers
+  layer-completion: 10
+  
+  # Win bonus
+  win-bonus: 100
+
+# Messages
+messages:
+  box-created: "&aĐã tạo hộp bedrock {size}x{size}x{height}!"
+  box-deleted: "&aĐã xóa hộp bedrock!"
+  box-cleared: "&aĐã dọn sạch hộp!"
+  timer-started: "&aTimer bắt đầu đếm ngược!"
+  timer-stopped: "&eĐã dừng timer!"
+  game-won: "&a&lTHẮNG! &fHộp vẫn nguyên vẹn!"
+  game-lost: "&c&lTHUA! &fHộp đã bị phá!"
+  tnt-spawned: "&cTNT đã xuất hiện trong hộp!"
+  fireworks-triggered: "&6Pháo hoa đã được kích hoạt!"
+
+# Backend Integration
+backend:
+  # API endpoint for sending game results
+  api-url: "http://localhost:3000/api/plugin"
+  
+  # Plugin authentication key
+  plugin-key: "bedrockbox-secret-key"
+  
+  # Enable/disable backend integration
+  enabled: true
+
+# Debug Settings
+debug:
+  # Enable debug messages
+  enabled: false
+  
+  # Log all TNT spawns
+  log-tnt: true
+  
+  # Log all block placements
+  log-blocks: true

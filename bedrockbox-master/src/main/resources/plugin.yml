@@ -1,0 +1,25 @@
+name: BedrockBox
+version: ${plugin.version}
+main: io.github.jeeanflores.bedrockBox.BedrockBoxPlugin
+author: JeanFlores
+api-version: '1.20'
+description: A Minecraft plugin for Bedrock Box challenge game
+
+commands:
+  bedrock:
+    description: Main command for Bedrock Box Challenge
+    usage: |
+      /<command> create [size] [height] - Create bedrock box around player
+      /<command> fill [rows] - Fill box with blocks (start timer when full)
+      /<command> delete - Delete current box
+      /<command> clear - Clear blocks inside box
+      /<command> stop - Stop current timer
+      /<command> autowin - Auto win mode
+      /<command> tnt - Spawn TNT manually (test)
+      /<command> fireworks - Trigger fireworks effect
+      /<command> tp - Teleport to box center
+      /<command> info - Show box information
+      /<command> setblock <type> - Set fill block type
+    aliases:
+      - bb
+      - box
