@@ -19,6 +19,7 @@ public class BoxManager {
     private final BedrockBoxPlugin plugin;
     private final ApiClient apiClient;
     private final TikTokChatIntegration tikTokChat;
+    private SocketIOClient socketIOClient;
     
     // Game state
     private final Map<UUID, BoxGame> activeGames = new ConcurrentHashMap<>();
@@ -38,6 +39,34 @@ public class BoxManager {
         fillBlockTypes.put("gold", Material.GOLD_BLOCK);
         fillBlockTypes.put("diamond", Material.DIAMOND_BLOCK);
         fillBlockTypes.put("default", Material.STONE);
+        
+        // Initialize Socket.IO client
+        initSocketIOClient();
+    }
+    
+    private void initSocketIOClient() {
+        try {
+            String apiUrl = plugin.getConfig().getString("api.base_url", "http://localhost:3001/api/plugin");
+            String socketUrl = apiUrl.replace("/api/plugin", ""); // Remove /api/plugin from URL
+            String pluginKey = plugin.getConfig().getString("plugin-key", "453782thien");
+            String username = plugin.getConfig().getString("streamer", "streamer");
+            
+            socketIOClient = new SocketIOClient(socketUrl, pluginKey, username);
+            
+            // Set callback for handling gifts
+            socketIOClient.setGiftCallback((giftName, nickname, amount, data) -> {
+                // Log gift received
+                System.out.println("[BoxManager] Gift received: " + giftName + " from " + nickname + " amount: " + amount);
+                // Commands are already executed by SocketIOClient
+            });
+            
+            // Connect to backend
+            socketIOClient.connect();
+            
+            plugin.getLogger().info("Socket.IO client initialized for: " + username);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to initialize Socket.IO client: " + e.getMessage());
+        }
     }
     
     public boolean createBox(Player player, int size, int height) {
@@ -524,6 +553,11 @@ public class BoxManager {
             game.setTimerRunning(false);
         }
         activeGames.clear();
+        
+        // Disconnect Socket.IO client
+        if (socketIOClient != null) {
+            socketIOClient.disconnect();
+        }
     }
     
     // Method for backend integration
@@ -539,4 +573,5 @@ public class BoxManager {
             }
         }
     }
+    
 }

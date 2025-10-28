@@ -170,18 +170,32 @@ io.on("connection", (socket) => {
     } catch {}
   });
   
-  socket.on("join:plugin", () => {
+  socket.on("join:plugin", async (data) => {
     try {
-      const t = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
-      const payload = jwt.verify(t, config.jwtSecret);
-      const username = payload?.username;
-      if (username) {
-        socket.join(`plugin:${username}`);
-        console.log(`🔌 Plugin client joined room: plugin:${username}`);
-        // Emit plugin ready event
-        socket.emit("plugin:ready", { status: "connected" });
+      // Check if data contains plugin key
+      const pluginKey = data?.pluginKey || socket.handshake.auth?.pluginKey || socket.handshake.headers?.["x-plugin-key"];
+      
+      if (pluginKey) {
+        // Validate plugin key from Redis
+        const redis = (await import("./redis.js")).redis;
+        const userId = await redis.get(`plugin_key_reverse:${pluginKey}`);
+        
+        if (userId) {
+          // Get username from userId (you might want to store username mapping)
+          const userData = await redis.get(`user:${userId}`);
+          const username = userData ? JSON.parse(userData).username : "streamer";
+          
+          socket.join(`plugin:${username}`);
+          console.log(`🔌 Plugin client joined room: plugin:${username}`);
+          // Emit plugin ready event
+          socket.emit("plugin:ready", { status: "connected", username: username });
+        } else {
+          console.log("❌ Invalid plugin key");
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.error("Error in join:plugin:", e);
+    }
   });
 
   socket.on("join:user", (data) => {

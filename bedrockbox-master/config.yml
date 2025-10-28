@@ -5,6 +5,10 @@
 # IMPORTANT: Set this to your user-specific plugin key from the website
 plugin-key: "453782thien"
 
+# Streamer Configuration
+# IMPORTANT: Set this to your Minecraft username
+streamer: "streamer"
+
 # Backend API Configuration
 api:
   base_url: "http://localhost:3001/api/plugin"

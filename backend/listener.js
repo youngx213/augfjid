@@ -3,6 +3,7 @@ import { markGift, hasGifted } from "./gift-tracker.js";
 import { redis } from "./redis.js";
 import { analyticsService } from "./services/analyticsService.js";
 import { gameFeaturesService } from "./services/gameFeaturesService.js";
+import { getPresets } from "./services/gameService.js";
 let ioRef = null;
 
 // Thêm Map để quản lý listeners
@@ -32,6 +33,38 @@ async function pushJobToWS(accountId, job) {
     jobId: job.jobId
   });
   await writeLog(accountId, "queue", `Job từ @${job.user} đã gửi tới Python client.`);
+}
+
+// Trigger plugin với gift events
+async function triggerPlugin(username, giftData) {
+  try {
+    const presets = await getPresets(username);
+    const preset = Array.isArray(presets) 
+      ? presets.find(p => p.giftName === giftData.giftName && p.enabled !== false)
+      : null;
+    
+    if (preset && preset.commands && preset.commands.length > 0) {
+      // Emit plugin trigger event via Socket.IO
+      if (ioRef) {
+        ioRef.to(`plugin:${username}`).emit("plugin:trigger", {
+          giftName: giftData.giftName,
+          nickname: giftData.username,
+          amount: giftData.repeatCount || 1,
+          commands: preset.commands,
+          sound: preset.soundFile,
+          punishmentImage: preset.punishmentImage,
+          repetition: preset.repetition || 1,
+          delay: preset.delay || 0,
+          interval: preset.interval || 100,
+          hideInOverlay: preset.hideInOverlay || false,
+          coinsAdded: (preset.coinsPerUnit || 1) * (giftData.repeatCount || 1)
+        });
+        console.log(`🔌 Sent plugin trigger for ${giftData.giftName} to plugin:${username}`);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to trigger plugin:", err);
+  }
 }
 
 // Start listener
@@ -86,6 +119,13 @@ export async function startListener(accountId, username) {
         uniqueViewers: analytics.uniqueViewers
       });
     }
+    
+    // Trigger plugin với gift data
+    await triggerPlugin(username, {
+      giftName: data.giftName,
+      username: data.uniqueId,
+      repeatCount: data.repeatCount || 1
+    });
   });
 
   tiktok.on("chat", async (chat) => {
